@@ -1,0 +1,82 @@
+[0.000000] (-) TimerEvent: {}
+[0.000801] (ai_drone) JobQueued: {'identifier': 'ai_drone', 'dependencies': OrderedDict()}
+[0.000940] (ai_drone) JobStarted: {'identifier': 'ai_drone'}
+[0.098207] (-) TimerEvent: {}
+[0.198996] (-) TimerEvent: {}
+[0.299627] (-) TimerEvent: {}
+[0.400252] (-) TimerEvent: {}
+[0.500869] (-) TimerEvent: {}
+[0.601547] (-) TimerEvent: {}
+[0.702158] (-) TimerEvent: {}
+[0.802797] (-) TimerEvent: {}
+[0.903447] (-) TimerEvent: {}
+[1.004110] (-) TimerEvent: {}
+[1.104876] (-) TimerEvent: {}
+[1.205772] (-) TimerEvent: {}
+[1.306403] (-) TimerEvent: {}
+[1.407044] (-) TimerEvent: {}
+[1.507672] (-) TimerEvent: {}
+[1.608298] (-) TimerEvent: {}
+[1.708909] (-) TimerEvent: {}
+[1.809534] (-) TimerEvent: {}
+[1.910108] (-) TimerEvent: {}
+[2.010715] (-) TimerEvent: {}
+[2.111346] (-) TimerEvent: {}
+[2.211979] (-) TimerEvent: {}
+[2.312628] (-) TimerEvent: {}
+[2.413216] (-) TimerEvent: {}
+[2.513955] (-) TimerEvent: {}
+[2.614680] (-) TimerEvent: {}
+[2.664582] (ai_drone) Command: {'cmd': ['/usr/bin/python3', '-W', 'ignore:setup.py install is deprecated', '-W', 'ignore:easy_install command is deprecated', 'setup.py', 'egg_info', '--egg-base', '../../build/ai_drone', 'build', '--build-base', '/project/ai-drone-ws/build/ai_drone/build', 'install', '--record', '/project/ai-drone-ws/build/ai_drone/install.log', '--install-scripts', '$base/lib/ai_drone', '--single-version-externally-managed', 'install_data'], 'cwd': '/project/ai-drone-ws/src/ai_drone', 'env': {'OPENBLAS_CORETYPE': 'ARMV8', 'HOSTNAME': 'jetson-ros', 'SHLVL': '1', 'LD_LIBRARY_PATH': '/opt/ros/foxy/opt/yaml_cpp_vendor/lib:/opt/ros/foxy/opt/rviz_ogre_vendor/lib:/opt/ros/foxy/lib/aarch64-linux-gnu:/opt/ros/foxy/lib:/usr/local/cuda/lib64:/usr/local/cuda-10.2/targets/aarch64-linux/lib:', 'HOME': '/root', 'OLDPWD': '/', 'ROS_PYTHON_VERSION': '3', 'LC_CTYPE': 'C.UTF-8', 'COLCON_PREFIX_PATH': '/project/ai-drone-ws/install', 'ROS_DISTRO': 'foxy', '_': '/usr/bin/colcon', 'ROS_VERSION': '2', 'NVIDIA_DRIVER_CAPABILITIES': 'all', 'TERM': 'xterm', 'ROS_LOCALHOST_ONLY': '0', 'QT_X11_NO_MITSHM': '1', 'PATH': '/opt/ros/foxy/bin:/usr/local/cuda/bin:/usr/local/cuda-10.2/bin:/usr/local/cuda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin', 'DISPLAY': ':0', 'LS_COLORS': 'rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=30;41:tw=30;42:ow=34;42:st=37;44:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.zst=01;31:*.tzst=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.wim=01;31:*.swm=01;31:*.dwm=01;31:*.esd=01;31:*.jpg=01;35:*.jpeg=01;35:*.mjpg=01;35:*.mjpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36:', 'AMENT_PREFIX_PATH': '/project/ai-drone-ws/install/ai_drone:/opt/ros/foxy', 'TELEM_HOST': '192.168.55.100', 'PWD': '/project/ai-drone-ws/build/ai_drone', 'TELEM_PORT': '9001', 'PYTHONPATH': '/project/ai-drone-ws/build/ai_drone/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/project/ai-drone-ws/install/ai_drone/lib/python3.8/site-packages:/project/ai-drone-ws/install/ai_drone/lib/python3.8/site-packages:/opt/ros/foxy/lib/python3.8/site-packages', 'NVIDIA_VISIBLE_DEVICES': 'all', 'COLCON': '1'}, 'shell': False}
+[2.714989] (-) TimerEvent: {}
+[2.815767] (-) TimerEvent: {}
+[2.916391] (-) TimerEvent: {}
+[3.017025] (-) TimerEvent: {}
+[3.117688] (-) TimerEvent: {}
+[3.218291] (-) TimerEvent: {}
+[3.318842] (-) TimerEvent: {}
+[3.419458] (-) TimerEvent: {}
+[3.520131] (-) TimerEvent: {}
+[3.563562] (ai_drone) StdoutLine: {'line': b'running egg_info\n'}
+[3.566147] (ai_drone) StdoutLine: {'line': b'writing ../../build/ai_drone/ai_drone.egg-info/PKG-INFO\n'}
+[3.566934] (ai_drone) StdoutLine: {'line': b'writing dependency_links to ../../build/ai_drone/ai_drone.egg-info/dependency_links.txt\n'}
+[3.567628] (ai_drone) StdoutLine: {'line': b'writing entry points to ../../build/ai_drone/ai_drone.egg-info/entry_points.txt\n'}
+[3.568194] (ai_drone) StdoutLine: {'line': b'writing top-level names to ../../build/ai_drone/ai_drone.egg-info/top_level.txt\n'}
+[3.620333] (-) TimerEvent: {}
+[3.720958] (-) TimerEvent: {}
+[3.722395] (ai_drone) StdoutLine: {'line': b"reading manifest file '../../build/ai_drone/ai_drone.egg-info/SOURCES.txt'\n"}
+[3.726776] (ai_drone) StdoutLine: {'line': b"writing manifest file '../../build/ai_drone/ai_drone.egg-info/SOURCES.txt'\n"}
+[3.727418] (ai_drone) StdoutLine: {'line': b'running build\n'}
+[3.727765] (ai_drone) StdoutLine: {'line': b'running build_py\n'}
+[3.728302] (ai_drone) StdoutLine: {'line': b'copying ai_drone/process_perception.py -> /project/ai-drone-ws/build/ai_drone/build/lib/ai_drone\n'}
+[3.729020] (ai_drone) StdoutLine: {'line': b'copying ai_drone/flask_streamer.py -> /project/ai-drone-ws/build/ai_drone/build/lib/ai_drone\n'}
+[3.729842] (ai_drone) StdoutLine: {'line': b'copying ai_drone/overlay_node.py -> /project/ai-drone-ws/build/ai_drone/build/lib/ai_drone\n'}
+[3.732018] (ai_drone) StdoutLine: {'line': b'copying ai_drone/telemetry_acquire.py -> /project/ai-drone-ws/build/ai_drone/build/lib/ai_drone\n'}
+[3.735219] (ai_drone) StdoutLine: {'line': b'running install\n'}
+[3.738221] (ai_drone) StdoutLine: {'line': b'running install_lib\n'}
+[3.742020] (ai_drone) StdoutLine: {'line': b'copying /project/ai-drone-ws/build/ai_drone/build/lib/ai_drone/process_perception.py -> /project/ai-drone-ws/install/ai_drone/lib/python3.8/site-packages/ai_drone\n'}
+[3.742661] (ai_drone) StdoutLine: {'line': b'copying /project/ai-drone-ws/build/ai_drone/build/lib/ai_drone/flask_streamer.py -> /project/ai-drone-ws/install/ai_drone/lib/python3.8/site-packages/ai_drone\n'}
+[3.743305] (ai_drone) StdoutLine: {'line': b'copying /project/ai-drone-ws/build/ai_drone/build/lib/ai_drone/overlay_node.py -> /project/ai-drone-ws/install/ai_drone/lib/python3.8/site-packages/ai_drone\n'}
+[3.745009] (ai_drone) StdoutLine: {'line': b'copying /project/ai-drone-ws/build/ai_drone/build/lib/ai_drone/telemetry_acquire.py -> /project/ai-drone-ws/install/ai_drone/lib/python3.8/site-packages/ai_drone\n'}
+[3.747185] (ai_drone) StdoutLine: {'line': b'byte-compiling /project/ai-drone-ws/install/ai_drone/lib/python3.8/site-packages/ai_drone/process_perception.py to process_perception.cpython-38.pyc\n'}
+[3.756512] (ai_drone) StdoutLine: {'line': b'byte-compiling /project/ai-drone-ws/install/ai_drone/lib/python3.8/site-packages/ai_drone/flask_streamer.py to flask_streamer.cpython-38.pyc\n'}
+[3.760507] (ai_drone) StdoutLine: {'line': b'byte-compiling /project/ai-drone-ws/install/ai_drone/lib/python3.8/site-packages/ai_drone/overlay_node.py to overlay_node.cpython-38.pyc\n'}
+[3.767129] (ai_drone) StdoutLine: {'line': b'byte-compiling /project/ai-drone-ws/install/ai_drone/lib/python3.8/site-packages/ai_drone/telemetry_acquire.py to telemetry_acquire.cpython-38.pyc\n'}
+[3.771622] (ai_drone) StdoutLine: {'line': b'running install_data\n'}
+[3.772553] (ai_drone) StdoutLine: {'line': b'running install_egg_info\n'}
+[3.778331] (ai_drone) StdoutLine: {'line': b"removing '/project/ai-drone-ws/install/ai_drone/lib/python3.8/site-packages/ai_drone-0.1.0-py3.8.egg-info' (and everything under it)\n"}
+[3.779414] (ai_drone) StdoutLine: {'line': b'Copying ../../build/ai_drone/ai_drone.egg-info to /project/ai-drone-ws/install/ai_drone/lib/python3.8/site-packages/ai_drone-0.1.0-py3.8.egg-info\n'}
+[3.782496] (ai_drone) StdoutLine: {'line': b'running install_scripts\n'}
+[3.821164] (-) TimerEvent: {}
+[3.847200] (ai_drone) StdoutLine: {'line': b'Installing flask_streamer script to /project/ai-drone-ws/install/ai_drone/lib/ai_drone\n'}
+[3.847900] (ai_drone) StdoutLine: {'line': b'Installing overlay_node script to /project/ai-drone-ws/install/ai_drone/lib/ai_drone\n'}
+[3.848443] (ai_drone) StdoutLine: {'line': b'Installing process_perception script to /project/ai-drone-ws/install/ai_drone/lib/ai_drone\n'}
+[3.849019] (ai_drone) StdoutLine: {'line': b'Installing telemetry_acquire script to /project/ai-drone-ws/install/ai_drone/lib/ai_drone\n'}
+[3.849440] (ai_drone) StdoutLine: {'line': b'Installing tracker_node script to /project/ai-drone-ws/install/ai_drone/lib/ai_drone\n'}
+[3.849958] (ai_drone) StdoutLine: {'line': b'Installing video_acquire_ros2 script to /project/ai-drone-ws/install/ai_drone/lib/ai_drone\n'}
+[3.850298] (ai_drone) StdoutLine: {'line': b'Installing yolo_trt_node script to /project/ai-drone-ws/install/ai_drone/lib/ai_drone\n'}
+[3.851941] (ai_drone) StdoutLine: {'line': b"writing list of installed files to '/project/ai-drone-ws/build/ai_drone/install.log'\n"}
+[3.921407] (-) TimerEvent: {}
+[3.951911] (ai_drone) CommandEnded: {'returncode': 0}
+[3.994361] (ai_drone) JobEnded: {'identifier': 'ai_drone', 'rc': 0}
+[3.996982] (-) EventReactorShutdown: {}

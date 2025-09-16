@@ -1,0 +1,81 @@
+[0.000000] (-) TimerEvent: {}
+[0.000416] (ai_drone) JobQueued: {'identifier': 'ai_drone', 'dependencies': OrderedDict()}
+[0.002204] (ai_drone) JobStarted: {'identifier': 'ai_drone'}
+[0.099263] (-) TimerEvent: {}
+[0.200100] (-) TimerEvent: {}
+[0.300690] (-) TimerEvent: {}
+[0.401318] (-) TimerEvent: {}
+[0.501934] (-) TimerEvent: {}
+[0.602542] (-) TimerEvent: {}
+[0.703199] (-) TimerEvent: {}
+[0.803819] (-) TimerEvent: {}
+[0.904383] (-) TimerEvent: {}
+[1.004986] (-) TimerEvent: {}
+[1.105762] (-) TimerEvent: {}
+[1.206483] (-) TimerEvent: {}
+[1.307212] (-) TimerEvent: {}
+[1.407855] (-) TimerEvent: {}
+[1.508414] (-) TimerEvent: {}
+[1.609020] (-) TimerEvent: {}
+[1.709624] (-) TimerEvent: {}
+[1.810241] (-) TimerEvent: {}
+[1.910879] (-) TimerEvent: {}
+[2.011620] (-) TimerEvent: {}
+[2.112248] (-) TimerEvent: {}
+[2.212875] (-) TimerEvent: {}
+[2.313456] (-) TimerEvent: {}
+[2.414094] (-) TimerEvent: {}
+[2.514828] (-) TimerEvent: {}
+[2.615607] (-) TimerEvent: {}
+[2.669114] (ai_drone) Command: {'cmd': ['/usr/bin/python3', '-W', 'ignore:setup.py install is deprecated', '-W', 'ignore:easy_install command is deprecated', 'setup.py', 'develop', '--editable', '--build-directory', '/project/ai-drone-ws/build/ai_drone/build', '--no-deps', 'symlink_data'], 'cwd': '/project/ai-drone-ws/build/ai_drone', 'env': {'OPENBLAS_CORETYPE': 'ARMV8', 'HOSTNAME': 'jetson-ros', 'SHLVL': '1', 'LD_LIBRARY_PATH': '/opt/ros/foxy/opt/yaml_cpp_vendor/lib:/opt/ros/foxy/opt/rviz_ogre_vendor/lib:/opt/ros/foxy/lib/aarch64-linux-gnu:/opt/ros/foxy/lib:/usr/local/cuda/lib64:/usr/local/cuda-10.2/targets/aarch64-linux/lib:', 'HOME': '/root', 'OLDPWD': '/project', 'ROS_PYTHON_VERSION': '3', 'LC_CTYPE': 'C.UTF-8', 'COLCON_PREFIX_PATH': '/project/ai-drone-ws/install', 'ROS_DISTRO': 'foxy', '_': '/usr/bin/colcon', 'ROS_VERSION': '2', 'NVIDIA_DRIVER_CAPABILITIES': 'all', 'TERM': 'xterm', 'ROS_LOCALHOST_ONLY': '0', 'QT_X11_NO_MITSHM': '1', 'PATH': '/opt/ros/foxy/bin:/usr/local/cuda/bin:/usr/local/cuda-10.2/bin:/usr/local/cuda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin', 'DISPLAY': ':0', 'LS_COLORS': 'rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=30;41:tw=30;42:ow=34;42:st=37;44:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.zst=01;31:*.tzst=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.wim=01;31:*.swm=01;31:*.dwm=01;31:*.esd=01;31:*.jpg=01;35:*.jpeg=01;35:*.mjpg=01;35:*.mjpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36:', 'AMENT_PREFIX_PATH': '/project/ai-drone-ws/install/ai_drone:/opt/ros/foxy', 'PWD': '/project/ai-drone-ws/build/ai_drone', 'PYTHONPATH': '/project/ai-drone-ws/build/ai_drone/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/project/ai-drone-ws/install/ai_drone/lib/python3.8/site-packages:/project/ai-drone-ws/build/ai_drone:/project/ai-drone-ws/install/ai_drone/lib/python3.8/site-packages:/opt/ros/foxy/lib/python3.8/site-packages', 'NVIDIA_VISIBLE_DEVICES': 'all', 'COLCON': '1'}, 'shell': False}
+[2.715811] (-) TimerEvent: {}
+[2.816632] (-) TimerEvent: {}
+[2.917276] (-) TimerEvent: {}
+[3.017936] (-) TimerEvent: {}
+[3.118509] (-) TimerEvent: {}
+[3.219169] (-) TimerEvent: {}
+[3.319796] (-) TimerEvent: {}
+[3.420399] (-) TimerEvent: {}
+[3.521010] (-) TimerEvent: {}
+[3.621631] (-) TimerEvent: {}
+[3.633631] (ai_drone) StdoutLine: {'line': b'running develop\n'}
+[3.721839] (-) TimerEvent: {}
+[3.822473] (-) TimerEvent: {}
+[3.923168] (-) TimerEvent: {}
+[4.023779] (-) TimerEvent: {}
+[4.124396] (-) TimerEvent: {}
+[4.197359] (ai_drone) StdoutLine: {'line': b'running egg_info\n'}
+[4.197878] (ai_drone) StdoutLine: {'line': b'creating ai_drone.egg-info\n'}
+[4.198365] (ai_drone) StdoutLine: {'line': b'writing ai_drone.egg-info/PKG-INFO\n'}
+[4.198945] (ai_drone) StdoutLine: {'line': b'writing dependency_links to ai_drone.egg-info/dependency_links.txt\n'}
+[4.199604] (ai_drone) StdoutLine: {'line': b'writing entry points to ai_drone.egg-info/entry_points.txt\n'}
+[4.200103] (ai_drone) StdoutLine: {'line': b'writing top-level names to ai_drone.egg-info/top_level.txt\n'}
+[4.204627] (ai_drone) StdoutLine: {'line': b"writing manifest file 'ai_drone.egg-info/SOURCES.txt'\n"}
+[4.224594] (-) TimerEvent: {}
+[4.325152] (-) TimerEvent: {}
+[4.348054] (ai_drone) StdoutLine: {'line': b"reading manifest file 'ai_drone.egg-info/SOURCES.txt'\n"}
+[4.351818] (ai_drone) StdoutLine: {'line': b"writing manifest file 'ai_drone.egg-info/SOURCES.txt'\n"}
+[4.425347] (-) TimerEvent: {}
+[4.506211] (ai_drone) StdoutLine: {'line': b'running build_ext\n'}
+[4.507321] (ai_drone) StdoutLine: {'line': b'Creating /project/ai-drone-ws/install/ai_drone/lib/python3.8/site-packages/site.py\n'}
+[4.515229] (ai_drone) StdoutLine: {'line': b'Creating /project/ai-drone-ws/install/ai_drone/lib/python3.8/site-packages/ai-drone.egg-link (link to .)\n'}
+[4.518107] (ai_drone) StdoutLine: {'line': b'Installing flask_streamer script to /project/ai-drone-ws/install/ai_drone/lib/ai_drone\n'}
+[4.518665] (ai_drone) StdoutLine: {'line': b'Installing overlay_node script to /project/ai-drone-ws/install/ai_drone/lib/ai_drone\n'}
+[4.519218] (ai_drone) StdoutLine: {'line': b'Installing tracker_node script to /project/ai-drone-ws/install/ai_drone/lib/ai_drone\n'}
+[4.519733] (ai_drone) StdoutLine: {'line': b'Installing video_acquire_ros2 script to /project/ai-drone-ws/install/ai_drone/lib/ai_drone\n'}
+[4.520233] (ai_drone) StdoutLine: {'line': b'Installing yolo_trt_node script to /project/ai-drone-ws/install/ai_drone/lib/ai_drone\n'}
+[4.520814] (ai_drone) StdoutLine: {'line': b'\n'}
+[4.521375] (ai_drone) StdoutLine: {'line': b'Installed /project/ai-drone-ws/build/ai_drone\n'}
+[4.521768] (ai_drone) StdoutLine: {'line': b'running symlink_data\n'}
+[4.522200] (ai_drone) StdoutLine: {'line': b'creating /project/ai-drone-ws/install/ai_drone/share/ament_index\n'}
+[4.522603] (ai_drone) StdoutLine: {'line': b'creating /project/ai-drone-ws/install/ai_drone/share/ament_index/resource_index\n'}
+[4.523025] (ai_drone) StdoutLine: {'line': b'creating /project/ai-drone-ws/install/ai_drone/share/ament_index/resource_index/packages\n'}
+[4.523531] (ai_drone) StdoutLine: {'line': b'symbolically linking /project/ai-drone-ws/build/ai_drone/resource/ai_drone -> /project/ai-drone-ws/install/ai_drone/share/ament_index/resource_index/packages\n'}
+[4.523943] (ai_drone) StdoutLine: {'line': b'creating /project/ai-drone-ws/install/ai_drone/share/ai_drone/launch\n'}
+[4.524366] (ai_drone) StdoutLine: {'line': b'symbolically linking /project/ai-drone-ws/build/ai_drone/launch/bringup.launch.py -> /project/ai-drone-ws/install/ai_drone/share/ai_drone/launch\n'}
+[4.524794] (ai_drone) StdoutLine: {'line': b'creating /project/ai-drone-ws/install/ai_drone/share/ai_drone/models\n'}
+[4.525457] (-) TimerEvent: {}
+[4.626109] (-) TimerEvent: {}
+[4.645972] (ai_drone) CommandEnded: {'returncode': 0}
+[4.690836] (ai_drone) JobEnded: {'identifier': 'ai_drone', 'rc': 0}
+[4.693061] (-) EventReactorShutdown: {}

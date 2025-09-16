@@ -1,0 +1,20 @@
+[2.701s] Invoking command in '/project/ai-drone-ws/build/ai_drone': PYTHONPATH=/project/ai-drone-ws/build/ai_drone/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/project/ai-drone-ws/install/ai_drone/lib/python3.8/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py develop --editable --build-directory /project/ai-drone-ws/build/ai_drone/build --no-deps symlink_data
+[3.674s] running develop
+[4.251s] running egg_info
+[4.253s] writing ai_drone.egg-info/PKG-INFO
+[4.253s] writing dependency_links to ai_drone.egg-info/dependency_links.txt
+[4.254s] writing entry points to ai_drone.egg-info/entry_points.txt
+[4.254s] writing top-level names to ai_drone.egg-info/top_level.txt
+[4.403s] reading manifest file 'ai_drone.egg-info/SOURCES.txt'
+[4.406s] writing manifest file 'ai_drone.egg-info/SOURCES.txt'
+[4.565s] running build_ext
+[4.566s] Creating /project/ai-drone-ws/install/ai_drone/lib/python3.8/site-packages/ai-drone.egg-link (link to .)
+[4.569s] Installing flask_streamer script to /project/ai-drone-ws/install/ai_drone/lib/ai_drone
+[4.570s] Installing overlay_node script to /project/ai-drone-ws/install/ai_drone/lib/ai_drone
+[4.570s] Installing tracker_node script to /project/ai-drone-ws/install/ai_drone/lib/ai_drone
+[4.571s] Installing video_acquire_ros2 script to /project/ai-drone-ws/install/ai_drone/lib/ai_drone
+[4.572s] Installing yolo_trt_node script to /project/ai-drone-ws/install/ai_drone/lib/ai_drone
+[4.573s] 
+[4.573s] Installed /project/ai-drone-ws/build/ai_drone
+[4.573s] running symlink_data
+[4.696s] Invoked command in '/project/ai-drone-ws/build/ai_drone' returned '0': PYTHONPATH=/project/ai-drone-ws/build/ai_drone/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/project/ai-drone-ws/install/ai_drone/lib/python3.8/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py develop --editable --build-directory /project/ai-drone-ws/build/ai_drone/build --no-deps symlink_data

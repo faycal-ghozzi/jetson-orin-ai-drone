@@ -1,0 +1,669 @@
+
+================================================================================
+# File: ai_drone/ai_drone/.env
+================================================================================
+
+# --- VIDEO ---
+RTSP_URL=REDACTED
+VIDEO_WIDTH=REDACTED
+VIDEO_HEIGHT=REDACTED
+VIDEO_FPS=REDACTED
+VIDEO_LATENCY=REDACTED
+VIDEO_USE_HW=REDACTED
+
+# --- YOLO / TRT ---
+ENGINE_PATH=REDACTED
+YOLO_INPUT_W=REDACTED
+YOLO_INPUT_H=REDACTED
+YOLO_CONF_TH=REDACTED
+YOLO_CLASSES=REDACTED
+
+# --- FLASK ---
+VIDEO_USE_HW=REDACTED
+STREAM_TOPIC=REDACTED
+FLASK_PORT=REDACTED
+FLASK_QUALITY=REDACTED
+READY_TIMEOUT=REDACTED
+
+
+
+
+================================================================================
+# File: ai_drone/ai_drone/__init__.py
+================================================================================
+
+"""Package ROS2 ai_drone."""
+
+
+
+
+================================================================================
+# File: ai_drone/ai_drone/flask_streamer.py
+================================================================================
+
+#!/usr/bin/env python3
+"""
+Expose un flux MJPEG fiable (+ index, snapshot, health) sans cv_bridge.
+
+Endpoints:
+- GET /            : page HTML simple avec <img src="/video"> et liens utilitaires
+- GET /video       : flux MJPEG; attend une 1re image max READY_TIMEOUT s, sinon 503
+- GET /snapshot.jpg: dernière image JPEG ou 503 si aucune disponible
+- GET /healthz     : JSON {"ready": bool, "age_ms": int}
+- 404 -> redirection vers "/"
+
+Paramètres (.env ou paramètres ROS):
+- STREAM_TOPIC   : topic ROS2 CompressedImage (défaut: /camera/image/compressed)
+- FLASK_PORT     : port (défaut: 5000)
+- FLASK_QUALITY  : qualité JPEG si on réencode (ici on renvoie tel quel)
+- READY_TIMEOUT  : délai (s) max pour 1re image (défaut: 3.0)
+"""
+import os, threading, time
+import rclpy
+from rclpy.node import Node
+from sensor_msgs.msg import CompressedImage
+from flask import Flask, Response, jsonify, redirect, url_for
+from dotenv import load_dotenv
+
+app = Flask(__name__)
+latest = {'jpg': None, 't': 0.0}
+
+HTML_INDEX = """<!doctype html>
+<title>AI-Drone Camera</title>
+<h1>AI-Drone Camera</h1>
+<p><a href="/snapshot.jpg" target="_blank">Snapshot</a> | <a href="/healthz" target="_blank">Health</a></p>
+<img src="/video" style="max-width: 100%; height: auto;"/>
+"""
+
+def now(): return time.monotonic()
+
+def mjpeg_gen():
+    """Génère le multipart MJPEG à partir de la dernière image reçue."""
+    boundary = b'--frame\r\nContent-Type: image/jpeg\r\n\r\n'
+    while True:
+        buf = latest['jpg']
+        if buf is not None:
+            yield boundary + buf + b'\r\n'
+        # petit sleep pour éviter le busy-wait; le rythme est piloté par la réception
+        time.sleep(0.01)
+
+@app.route('/')
+def index():
+    """Page d’accueil simple avec l’aperçu."""
+    return HTML_INDEX
+
+@app.route('/video')
+def video():
+    """Flux MJPEG; renvoie 503 si aucune image sous READY_TIMEOUT."""
+    timeout = float(os.getenv('READY_TIMEOUT', '3.0'))
+    t0 = now()
+    while latest['jpg'] is None and (now() - t0) < timeout:
+        time.sleep(0.05)
+    if latest['jpg'] is None:
+        return jsonify(error="no frames yet", ready=False, hint="check RTSP and /healthz"), 503
+    return Response(mjpeg_gen(), mimetype='multipart/x-mixed-replace; boundary=frame')
+
+@app.route('/snapshot.jpg')
+def snapshot():
+    """Renvoie la dernière image JPEG ou 503 si aucune disponible."""
+    if latest['jpg'] is None:
+        return jsonify(error="no snapshot yet"), 503
+    return Response(latest['jpg'], mimetype='image/jpeg')
+
+@app.route('/healthz')
+def health():
+    """Donne l’état: a-t-on reçu une image récemment ?"""
+    age_ms = int((now() - latest['t']) * 1000) if latest['t'] > 0 else -1
+    return jsonify(ready=(latest['jpg'] is not None), age_ms=age_ms)
+
+@app.errorhandler(404)
+def not_found(_):
+    """Toute URL inconnue renvoie vers l’index (évite les 404 piégeux)."""
+    return redirect(url_for('index'))
+
+class FlaskStream(Node):
+    """Souscrit un CompressedImage et diffuse via Flask (sans cv_bridge)."""
+    def __init__(self):
+        super().__init__('flask_streamer')
+        try:
+            load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
+        except Exception:
+            pass
+        topic   = os.getenv('STREAM_TOPIC', '/camera/image/compressed')
+        port    = int(os.getenv('FLASK_PORT', '5000'))
+
+        self.create_subscription(CompressedImage, topic, self.cb, 10)
+
+        threading.Thread(
+            target=lambda: app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False),
+            daemon=True
+        ).start()
+        self.get_logger().info(f'Flask: http://0.0.0.0:{port}/  (topic={topic})')
+
+    def cb(self, msg: CompressedImage):
+        latest['jpg'] = bytes(msg.data)
+        latest['t'] = now()
+
+def main():
+    rclpy.init()
+    n = FlaskStream()
+    rclpy.spin(n)
+    n.destroy_node()
+    rclpy.shutdown()
+
+if __name__ == '__main__':
+    main()
+
+
+
+
+================================================================================
+# File: ai_drone/ai_drone/overlay_node.py
+================================================================================
+
+#!/usr/bin/env python3
+import json, numpy as np, cv2
+import rclpy
+from rclpy.node import Node
+from sensor_msgs.msg import Image, CompressedImage
+from std_msgs.msg import String, Int32MultiArray
+from cv_bridge import CvBridge
+
+class OverlayNode(Node):
+    """Dessine boîtes + IDs sur l'image camera et publie aussi une version JPEG compressée."""
+
+    def __init__(self):
+        super().__init__('overlay')
+        self.bridge = CvBridge()
+        self.sub_img   = self.create_subscription(Image, '/camera/image', self._on_img,   10)
+        self.sub_det   = self.create_subscription(String, '/detections_raw', self._on_det, 10)
+        self.sub_track = self.create_subscription(Int32MultiArray, '/tracks_xy_id', self._on_tracks, 10)
+        self.pub_img   = self.create_publisher(Image, '/camera/overlay', 10)
+        self.pub_jpg   = self.create_publisher(CompressedImage, '/camera/overlay/compressed', 10)
+        self.last_dets, self.last_ids = [], []
+        self.th2 = 100.0**2
+
+    def _on_det(self, msg: String):
+        """Stocke la dernière liste de détections (JSON)."""
+        try: self.last_dets = json.loads(msg.data).get("detections", [])
+        except Exception: self.last_dets = []
+
+    def _on_tracks(self, msg: Int32MultiArray):
+        """Stocke le dernier tableau [x,y,id,...]."""
+        v = msg.data
+        self.last_ids = [(v[i], v[i+1], v[i+2]) for i in range(0, len(v), 3)]
+
+    def _on_img(self, msg: Image):
+        """Superpose boîtes+IDs et publie Image + CompressedImage."""
+        img = self.bridge.imgmsg_to_cv2(msg, 'bgr8')
+        centers = []
+        for d in self.last_dets:
+            x1,y1,x2,y2 = map(int,(d["x1"],d["y1"],d["x2"],d["y2"]))
+            sc, c = float(d["score"]), int(d["cls"])
+            cv2.rectangle(img,(x1,y1),(x2,y2),(0,255,0),2)
+            cv2.putText(img,f"{c}:{sc:.2f}",(x1,max(0,y1-7)),cv2.FONT_HERSHEY_SIMPLEX,0.5,(0,255,0),1)
+            centers.append(((x1+x2)/2.0,(y1+y2)/2.0))
+
+        if self.last_ids and centers:
+            det_np = np.array(centers, dtype=np.float32)
+            for tx,ty,tid in self.last_ids:
+                d2 = ((det_np - np.array([tx,ty],np.float32))**2).sum(axis=1)
+                j  = int(np.argmin(d2))
+                cx,cy = (int(centers[j][0]),int(centers[j][1])) if d2[j] <= self.th2 else (int(tx),int(ty))
+                cv2.circle(img,(cx,cy),5,(255,200,0),-1)
+                cv2.putText(img,f"ID {tid}",(cx+6,cy-6),cv2.FONT_HERSHEY_SIMPLEX,0.6,(255,200,0),2)
+
+        out = self.bridge.cv2_to_imgmsg(img,'bgr8'); out.header = msg.header
+        self.pub_img.publish(out)
+        ok, buf = cv2.imencode('.jpg', img, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
+        if ok:
+            c = CompressedImage(); c.header=msg.header; c.format='jpeg'; c.data=buf.tobytes()
+            self.pub_jpg.publish(c)
+
+def main():
+    rclpy.init(); n=OverlayNode(); rclpy.spin(n); n.destroy_node(); rclpy.shutdown()
+if __name__=='__main__': main()
+
+
+
+================================================================================
+# File: ai_drone/ai_drone/tracker_node.py
+================================================================================
+
+#!/usr/bin/env python3
+import json, numpy as np
+import rclpy
+from rclpy.node import Node
+from std_msgs.msg import String, Int32MultiArray
+
+class Tracker(Node):
+    """Associe détections (JSON) à des IDs stables par plus-proche-centre."""
+
+    def __init__(self):
+        super().__init__('tracker')
+        self.declare_parameter('max_age', 10)
+        self.declare_parameter('dist_th', 100.0)
+        self.max_age = int(self.get_parameter('max_age').value)
+        self.th2 = float(self.get_parameter('dist_th').value)**2
+        self.tracks, self.next_id = {}, 1
+        self.create_subscription(String, '/detections_raw', self._on_det, 10)
+        self.pub = self.create_publisher(Int32MultiArray, '/tracks_xy_id', 10)
+        self.get_logger().info('Tracker prêt (entrée: /detections_raw)')
+
+    def _on_det(self, msg: String):
+        """Reçoit JSON, met à jour les pistes, publie [x,y,id,...]."""
+        dets = json.loads(msg.data).get("detections", [])
+        centers = np.array([((d["x1"]+d["x2"])/2.0, (d["y1"]+d["y2"])/2.0) for d in dets], dtype=np.float32) \
+                  if dets else np.zeros((0,2), dtype=np.float32)
+        ids=[]
+        for x,y in centers:
+            best, bid = 1e12, None
+            for tid,(tx,ty,age) in self.tracks.items():
+                d2 = (tx-x)**2 + (ty-y)**2
+                if d2 < best: best, bid = d2, tid
+            if best <= self.th2 and bid is not None:
+                self.tracks[bid] = [x,y,0]; ids.append(bid)
+            else:
+                tid = self.next_id; self.next_id += 1
+                self.tracks[tid] = [x,y,0]; ids.append(tid)
+
+        dead=[]
+        for tid,v in self.tracks.items():
+            v[2]+=1
+            if v[2] > self.max_age: dead.append(tid)
+        for tid in dead: self.tracks.pop(tid, None)
+
+        out = Int32MultiArray(); out.data=[]
+        for (x,y), tid in zip(centers, ids):
+            out.data += [int(x), int(y), int(tid)]
+        self.pub.publish(out)
+
+def main():
+    rclpy.init(); n=Tracker(); rclpy.spin(n); n.destroy_node(); rclpy.shutdown()
+if __name__=='__main__': main()
+
+
+
+================================================================================
+# File: ai_drone/ai_drone/utils/gst.py
+================================================================================
+
+def gst_pipeline(rtsp: str, use_hw: bool, width: int, height: int, latency: int) -> str:
+    """Construit un pipeline GStreamer faible latence pour RTSP."""
+    scale = "" if width <= 0 or height <= 0 else f" ! videoscale ! video/x-raw,width={width},height={height}"
+    if use_hw:
+        return (
+            f'rtspsrc location="{rtsp}" latency={latency} protocols=tcp drop-on-latency=true ! '
+            f'rtph264depay ! h264parse ! nvv4l2decoder ! nvvidconv ! '
+            f'video/x-raw,format=BGRx{scale} ! videoconvert ! video/x-raw,format=BGR ! '
+            f'appsink drop=true max-buffers=1 sync=false'
+        )
+    return (
+        f'rtspsrc location="{rtsp}" latency={latency} protocols=tcp drop-on-latency=true ! '
+        f'rtph264depay ! h264parse ! avdec_h264 ! videoconvert{scale} ! '
+        f'appsink drop=true max-buffers=1 sync=false'
+    )
+
+
+
+
+================================================================================
+# File: ai_drone/ai_drone/utils/trt_runner.py
+================================================================================
+
+import tensorrt as trt, pycuda.autoinit
+import pycuda.driver as cuda
+import numpy as np
+
+class TrtRunner:
+    """Charge un moteur TensorRT et exécute une inférence sur entrée NCHW float32 [1,3,H,W]."""
+    def __init__(self, engine_path: str):
+        self.logger = trt.Logger(trt.Logger.ERROR)
+        with open(engine_path,'rb') as f, trt.Runtime(self.logger) as rt:
+            self.engine = rt.deserialize_cuda_engine(f.read())
+        self.ctx = self.engine.create_execution_context()
+        self.bindings=[None]*self.engine.num_bindings
+        self.host=[] 
+        self.dev=[] 
+        self.stream=cuda.Stream()
+        for i in range(self.engine.num_bindings):
+            shp = self.engine.get_binding_shape(i)
+            dt  = trt.nptype(self.engine.get_binding_dtype(i))
+            size= int(np.prod(shp))
+            h = cuda.pagelocked_empty(size, dt)
+            d = cuda.mem_alloc(h.nbytes)
+            self.host.append(h) 
+            self.dev.append(d)
+            self.bindings[i]=int(d)
+
+    def infer(self, x: np.ndarray) -> list:
+        """Retourne une liste de sorties numpy à partir du tenseur d’entrée x."""
+        np.copyto(self.host[0], x.ravel())
+        cuda.memcpy_htod_async(self.dev[0], self.host[0], self.stream)
+        self.ctx.execute_async_v2(self.bindings, self.stream.handle)
+        for i in range(1, self.engine.num_bindings):
+            cuda.memcpy_dtoh_async(self.host[i], self.dev[i], self.stream)
+        self.stream.synchronize()
+        return [np.array(self.host[i]) for i in range(1, self.engine.num_bindings)]
+
+
+
+
+================================================================================
+# File: ai_drone/ai_drone/utils/yolo_post.py
+================================================================================
+
+import numpy as np
+
+def prep_bgr_to_nchw(img_bgr, W, H):
+    """Prépare une image BGR en NCHW float32 [1,3,H,W] normalisée."""
+    import cv2
+    r = cv2.resize(img_bgr, (W,H))
+    r = cv2.cvtColor(r, cv2.COLOR_BGR2RGB).astype(np.float32)/255.0
+    r = np.transpose(r, (2,0,1)).reshape(1,3,H,W).copy()
+    return r
+
+def decode_yolov8(outputs, img_w, img_h, conf_th=0.25, keep=(0,7)):
+    """Décodage YOLOv8 [N,85] → boîtes [x1,y1,x2,y2,score,cls] avec NMS 0.5."""
+    pred = outputs[0].reshape(-1, 85)
+    pred = pred[pred[:,4] > conf_th]
+    if len(pred)==0: 
+        return np.empty((0,6))
+    cls = np.argmax(pred[:,5:], axis=1)
+    scr = pred[:,4] * pred[np.arange(len(pred)), 5+cls]
+    sel = np.isin(cls, keep)
+    pred, cls, scr = pred[sel], cls[sel], scr[sel]
+    x,y,w,h = pred[:,0], pred[:,1], pred[:,2], pred[:,3]
+    x1,y1,x2,y2 = x-w/2, y-h/2, x+w/2, y+h/2
+    boxes = np.stack([x1,y1,x2,y2,scr,cls], axis=1)
+    boxes[:,[0,2]] = np.clip(boxes[:,[0,2]], 0, img_w-1)
+    boxes[:,[1,3]] = np.clip(boxes[:,[1,3]], 0, img_h-1)
+    return nms(boxes, 0.5)
+
+def nms(boxes, iou_th=0.5):
+    """NMS standard sur [x1,y1,x2,y2,score,cls]."""
+    if len(boxes)==0: return boxes
+    b = boxes[np.argsort(-boxes[:,4])]
+    keep=[]
+    while len(b):
+        cur, rest = b[0], b[1:]
+        keep.append(cur)
+        if len(rest)==0: break
+        xx1 = np.maximum(cur[0], rest[:,0])
+        yy1 = np.maximum(cur[1], rest[:,1])
+        xx2 = np.minimum(cur[2], rest[:,2])
+        yy2 = np.minimum(cur[3], rest[:,3])
+        iw = np.maximum(0, xx2-xx1)
+        ih = np.maximum(0, yy2-yy1)
+        inter = iw*ih
+        iou = inter/(((cur[2]-cur[0])*(cur[3]-cur[1]))+((rest[:,2]-rest[:,0])*(rest[:,3]-rest[:,1]))-inter+1e-9)
+        b = rest[iou < iou_th]
+    return np.array(keep)
+
+
+
+
+================================================================================
+# File: ai_drone/ai_drone/video_acquire_ros2.py
+================================================================================
+
+import os, time, cv2
+import rclpy
+from rclpy.node import Node
+from sensor_msgs.msg import Image, CompressedImage
+from cv_bridge import CvBridge
+from dotenv import load_dotenv
+from .utils.gst import gst_pipeline
+
+class RtspNode(Node):
+    """Nœud d’acquisition RTSP faible latence publiant /camera/image (+ compressed)."""
+    def __init__(self):
+        super().__init__('video_acquire')
+        load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
+        self.rtsp = os.getenv('RTSP_URL','')
+        self.w = int(os.getenv('VIDEO_WIDTH','640'))
+        self.h = int(os.getenv('VIDEO_HEIGHT','360'))
+        self.fps = int(os.getenv('VIDEO_FPS','20'))
+        self.lat = int(os.getenv('VIDEO_LATENCY','0'))
+        self.use_hw = os.getenv('VIDEO_USE_HW','true').lower()=='true'
+        self.period = 1.0/max(1,self.fps)
+        self.bridge = CvBridge()
+        self.pub = self.create_publisher(Image, '/camera/image', 10)
+        self.pubc = self.create_publisher(CompressedImage, '/camera/image/compressed', 10)
+        self.cap = None
+        self.timer = self.create_timer(self.period, self.loop)
+
+    def _open(self):
+        pipe = gst_pipeline(self.rtsp, self.use_hw, self.w, self.h, self.lat)
+        self.cap = cv2.VideoCapture(pipe, cv2.CAP_GSTREAMER)
+
+    def loop(self):
+        if self.cap is None or not self.cap.isOpened():
+            self._open()
+            time.sleep(0.01)
+            if self.cap is None or not self.cap.isOpened():
+                self.get_logger().warn('RTSP indisponible, retry...')
+                return
+        ok, frame = self.cap.read()
+        if not ok:
+            self.get_logger().warn('Perte flux, reconnexion...')
+            try: 
+                self.cap.release()
+            except: 
+                pass
+            self.cap=None
+            return
+        msg = self.bridge.cv2_to_imgmsg(frame, encoding='bgr8')
+        self.pub.publish(msg)
+        c = CompressedImage()
+        c.format='jpeg'
+        c.data=cv2.imencode('.jpg', frame, [int(cv2.IMWRITE_JPEG_QUALITY),80])[1].tobytes()
+        c.header = msg.header
+        self.pubc.publish(c)
+
+def main():
+    rclpy.init()
+    n=RtspNode()
+    rclpy.spin(n)
+    n.destroy_node()
+    rclpy.shutdown()
+    
+if __name__=='__main__': 
+    main()
+
+
+
+================================================================================
+# File: ai_drone/ai_drone/yolo_trt_node.py
+================================================================================
+
+#!/usr/bin/env python3
+import os, json, numpy as np, cv2
+import rclpy
+from rclpy.node import Node
+from sensor_msgs.msg import Image
+from std_msgs.msg import String
+from cv_bridge import CvBridge
+from dotenv import load_dotenv
+from .utils.yolo_post import decode_yolov8
+
+class YoloOCV(Node):
+    """Détection YOLOv8 via OpenCV DNN (ONNX), publication JSON sur /detections_raw."""
+
+    def __init__(self):
+        super().__init__('yolo')
+        try: load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
+        except Exception: pass
+        self.bridge = CvBridge()
+        self.onnx = os.getenv('ONNX_PATH','models/yolov8n.onnx')
+        self.W = int(os.getenv('YOLO_INPUT_W','640')); self.H = int(os.getenv('YOLO_INPUT_H','640'))
+        self.conf = float(os.getenv('YOLO_CONF_TH','0.25'))
+        self.keep = tuple(int(x) for x in os.getenv('YOLO_CLASSES','0,7').split(','))
+        self.net = cv2.dnn.readNetFromONNX(self.onnx)
+        self.net.setPreferableBackend(cv2.dnn.DNN_BACKEND_OPENCV)
+        self.net.setPreferableTarget(cv2.dnn.DNN_TARGET_CPU)
+        self.sub = self.create_subscription(Image, '/camera/image', self._on_img, 10)
+        self.pub = self.create_publisher(String, '/detections_raw', 10)
+        self.get_logger().info(f'OpenCV DNN prêt: {self.onnx}')
+
+    def _on_img(self, msg: Image):
+        """Encode entrée, exécute ONNX, décode YOLOv8, publie JSON."""
+        img = self.bridge.imgmsg_to_cv2(msg, 'bgr8')
+        blob = cv2.dnn.blobFromImage(img, 1/255.0, (self.W,self.H), swapRB=True, crop=False)
+        self.net.setInput(blob)
+        out = self.net.forward()
+        out = [out.reshape(-1, 85)]
+        boxes = decode_yolov8(out, img.shape[1], img.shape[0], self.conf, self.keep)
+        payload = {"header":{"stamp":f"{msg.header.stamp.sec}.{msg.header.stamp.nanosec:09d}",
+                             "frame_id":msg.header.frame_id},
+                   "detections":[{"x1":int(x1),"y1":int(y1),"x2":int(x2),"y2":int(y2),"score":float(sc),"cls":int(cl)}
+                                 for x1,y1,x2,y2,sc,cl in boxes]}
+        m = String(); m.data = json.dumps(payload, separators=(',',':'))
+        self.pub.publish(m)
+
+def main():
+    rclpy.init(); n=YoloOCV(); rclpy.spin(n); n.destroy_node(); rclpy.shutdown()
+if __name__=='__main__': main()
+
+
+
+================================================================================
+# File: ai_drone/launch/bringup.launch.py
+================================================================================
+
+from launch import LaunchDescription
+from launch_ros.actions import Node
+
+def generate_launch_description():
+    return LaunchDescription([
+        Node(package='ai_drone', executable='video_acquire_ros2', name='video'),
+        Node(package='ai_drone', executable='yolo_trt_node',     name='yolo'),     # implémentation OpenCV DNN
+        Node(package='ai_drone', executable='tracker_node',       name='tracker'),
+        Node(package='ai_drone', executable='overlay_node',       name='overlay'),
+        Node(package='ai_drone', executable='flask_streamer',     name='flask',
+             parameters=[{'topic':'/camera/overlay/compressed','quality':80}]),
+    ])
+
+
+
+================================================================================
+# File: ai_drone/package.xml
+================================================================================
+
+<?xml version="1.0"?>
+<package format="3">
+  <name>ai_drone</name>
+  <version>0.1.0</version>
+  <description>Pipeline ROS2: RTSP + TensorRT YOLOv8 + Flask MJPEG</description>
+  <maintainer email="fghozzi@cesi.fr">ai-drone</maintainer>
+  <license>MIT</license>
+
+  <!-- Package Python: ament_python -->
+  <buildtool_depend>ament_python</buildtool_depend>
+
+  <!-- Dépendances runtime ROS -->
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>vision_msgs</exec_depend>
+  <exec_depend>cv_bridge</exec_depend>
+
+  <!-- Dépendances système: OpenCV est fourni par l’image -->
+  <exec_depend>python3-opencv</exec_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>
+
+
+
+
+================================================================================
+# File: ai_drone/setup.py
+================================================================================
+
+from setuptools import setup, find_packages
+package_name = 'ai_drone'
+
+setup(
+    name=package_name,
+    version='0.1.0',
+    packages=find_packages(),
+    data_files=[
+        ('share/ament_index/resource_index/packages', ['resource/ai_drone']),
+        ('share/' + package_name + '/launch', ['launch/bringup.launch.py']),
+        ('share/' + package_name + '/models', []),
+    ],
+    install_requires=[],
+    zip_safe=True,
+    maintainer='ai-drone',
+    maintainer_email='you@example.com',
+    description='RTSP + TensorRT YOLOv8 + Flask streamer',
+    license='MIT',
+    entry_points={
+        'console_scripts': [
+            'video_acquire_ros2 = ai_drone.video_acquire_ros2:main',
+            'yolo_trt_node     = ai_drone.yolo_trt_node:main',
+            'tracker_node      = ai_drone.tracker_node:main',
+            'flask_streamer    = ai_drone.flask_streamer:main',
+            'overlay_node      = ai_drone.overlay_node:main',
+    ],
+
+    },
+)
+
+
+
+
+================================================================================
+# File: collect.py
+================================================================================
+
+import os
+
+ROOT = "/project/ai-drone-ws/src"
+OUTPUT_FILE = os.path.join(ROOT, "collected_sources.txt")
+
+def redact_env_line(line: str) -> str:
+    """Replace values in .env lines with fake values, keeping only the keys."""
+    if "=" in line and not line.strip().startswith("#"):
+        key = line.split("=", 1)[0].strip()
+        return f"{key}=REDACTED\n"
+    return line
+
+def read_file(path: str) -> str:
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            if os.path.basename(path) == ".env":
+                return "".join(redact_env_line(line) for line in f)
+            return f.read()
+    except Exception as e:
+        return f"[!] Could not read {path}: {e}\n"
+
+def main():
+    collected_files = []
+
+    # Find all .py and .xml files under ROOT
+    for dirpath, _, filenames in os.walk(ROOT):
+        for filename in filenames:
+            if filename.endswith((".py", ".xml")) or filename == ".env":
+                collected_files.append(os.path.join(dirpath, filename))
+
+    collected_files.sort()  # for consistent ordering
+
+    with open(OUTPUT_FILE, "w", encoding="utf-8") as out:
+        for path in collected_files:
+            rel_path = os.path.relpath(path, ROOT)
+            out.write(f"\n{'='*80}\n")
+            out.write(f"# File: {rel_path}\n")
+            out.write(f"{'='*80}\n\n")
+            out.write(read_file(path))
+            out.write("\n\n")
+
+    print(f"✅ Collected {len(collected_files)} files into {OUTPUT_FILE}")
+
+if __name__ == "__main__":
+    main()
+
+
+

@@ -1,0 +1,30 @@
+[3.137s] Invoking command in '/project/ai-drone-ws/src/ai_drone': PYTHONPATH=/project/ai-drone-ws/build/ai_drone/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/project/ai-drone-ws/install/ai_drone/lib/python3.8/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../build/ai_drone build --build-base /project/ai-drone-ws/build/ai_drone/build install --record /project/ai-drone-ws/build/ai_drone/install.log --install-scripts $base/lib/ai_drone --single-version-externally-managed install_data
+[4.030s] running egg_info
+[4.033s] writing ../../build/ai_drone/ai_drone.egg-info/PKG-INFO
+[4.036s] writing dependency_links to ../../build/ai_drone/ai_drone.egg-info/dependency_links.txt
+[4.037s] writing entry points to ../../build/ai_drone/ai_drone.egg-info/entry_points.txt
+[4.038s] writing top-level names to ../../build/ai_drone/ai_drone.egg-info/top_level.txt
+[4.200s] reading manifest file '../../build/ai_drone/ai_drone.egg-info/SOURCES.txt'
+[4.206s] writing manifest file '../../build/ai_drone/ai_drone.egg-info/SOURCES.txt'
+[4.206s] running build
+[4.207s] running build_py
+[4.212s] copying ai_drone/process_perception.py -> /project/ai-drone-ws/build/ai_drone/build/lib/ai_drone
+[4.217s] running install
+[4.220s] running install_lib
+[4.223s] copying /project/ai-drone-ws/build/ai_drone/build/lib/ai_drone/process_perception.py -> /project/ai-drone-ws/install/ai_drone/lib/python3.8/site-packages/ai_drone
+[4.228s] byte-compiling /project/ai-drone-ws/install/ai_drone/lib/python3.8/site-packages/ai_drone/process_perception.py to process_perception.cpython-38.pyc
+[4.285s] running install_data
+[4.285s] copying launch/bringup.launch.py -> /project/ai-drone-ws/install/ai_drone/share/ai_drone/launch
+[4.286s] running install_egg_info
+[4.292s] removing '/project/ai-drone-ws/install/ai_drone/lib/python3.8/site-packages/ai_drone-0.1.0-py3.8.egg-info' (and everything under it)
+[4.293s] Copying ../../build/ai_drone/ai_drone.egg-info to /project/ai-drone-ws/install/ai_drone/lib/python3.8/site-packages/ai_drone-0.1.0-py3.8.egg-info
+[4.297s] running install_scripts
+[4.364s] Installing flask_streamer script to /project/ai-drone-ws/install/ai_drone/lib/ai_drone
+[4.365s] Installing overlay_node script to /project/ai-drone-ws/install/ai_drone/lib/ai_drone
+[4.365s] Installing process_perception script to /project/ai-drone-ws/install/ai_drone/lib/ai_drone
+[4.365s] Installing telemetry_acquire script to /project/ai-drone-ws/install/ai_drone/lib/ai_drone
+[4.366s] Installing tracker_node script to /project/ai-drone-ws/install/ai_drone/lib/ai_drone
+[4.366s] Installing video_acquire_ros2 script to /project/ai-drone-ws/install/ai_drone/lib/ai_drone
+[4.366s] Installing yolo_trt_node script to /project/ai-drone-ws/install/ai_drone/lib/ai_drone
+[4.367s] writing list of installed files to '/project/ai-drone-ws/build/ai_drone/install.log'
+[4.463s] Invoked command in '/project/ai-drone-ws/src/ai_drone' returned '0': PYTHONPATH=/project/ai-drone-ws/build/ai_drone/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/project/ai-drone-ws/install/ai_drone/lib/python3.8/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../build/ai_drone build --build-base /project/ai-drone-ws/build/ai_drone/build install --record /project/ai-drone-ws/build/ai_drone/install.log --install-scripts $base/lib/ai_drone --single-version-externally-managed install_data

@@ -1,0 +1,39 @@
+[3.056s] Invoking command in '/project/ai-drone-ws/src/ai_drone': PYTHONPATH=/project/ai-drone-ws/build/ai_drone/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/project/ai-drone-ws/install/ai_drone/lib/python3.8/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../build/ai_drone build --build-base /project/ai-drone-ws/build/ai_drone/build install --record /project/ai-drone-ws/build/ai_drone/install.log --install-scripts $base/lib/ai_drone --single-version-externally-managed install_data
+[3.960s] running egg_info
+[3.964s] writing ../../build/ai_drone/ai_drone.egg-info/PKG-INFO
+[3.965s] writing dependency_links to ../../build/ai_drone/ai_drone.egg-info/dependency_links.txt
+[3.966s] writing entry points to ../../build/ai_drone/ai_drone.egg-info/entry_points.txt
+[3.967s] writing top-level names to ../../build/ai_drone/ai_drone.egg-info/top_level.txt
+[4.141s] reading manifest file '../../build/ai_drone/ai_drone.egg-info/SOURCES.txt'
+[4.146s] writing manifest file '../../build/ai_drone/ai_drone.egg-info/SOURCES.txt'
+[4.146s] running build
+[4.146s] running build_py
+[4.150s] copying ai_drone/flask_streamer.py -> /project/ai-drone-ws/build/ai_drone/build/lib/ai_drone
+[4.150s] copying ai_drone/video_acquire_ros2.py -> /project/ai-drone-ws/build/ai_drone/build/lib/ai_drone
+[4.151s] copying ai_drone/overlay_node.py -> /project/ai-drone-ws/build/ai_drone/build/lib/ai_drone
+[4.151s] copying ai_drone/yolo_trt_node.py -> /project/ai-drone-ws/build/ai_drone/build/lib/ai_drone
+[4.152s] copying ai_drone/tracker_node.py -> /project/ai-drone-ws/build/ai_drone/build/lib/ai_drone
+[4.155s] running install
+[4.158s] running install_lib
+[4.162s] copying /project/ai-drone-ws/build/ai_drone/build/lib/ai_drone/flask_streamer.py -> /project/ai-drone-ws/install/ai_drone/lib/python3.8/site-packages/ai_drone
+[4.162s] copying /project/ai-drone-ws/build/ai_drone/build/lib/ai_drone/video_acquire_ros2.py -> /project/ai-drone-ws/install/ai_drone/lib/python3.8/site-packages/ai_drone
+[4.163s] copying /project/ai-drone-ws/build/ai_drone/build/lib/ai_drone/overlay_node.py -> /project/ai-drone-ws/install/ai_drone/lib/python3.8/site-packages/ai_drone
+[4.163s] copying /project/ai-drone-ws/build/ai_drone/build/lib/ai_drone/yolo_trt_node.py -> /project/ai-drone-ws/install/ai_drone/lib/python3.8/site-packages/ai_drone
+[4.166s] copying /project/ai-drone-ws/build/ai_drone/build/lib/ai_drone/tracker_node.py -> /project/ai-drone-ws/install/ai_drone/lib/python3.8/site-packages/ai_drone
+[4.168s] byte-compiling /project/ai-drone-ws/install/ai_drone/lib/python3.8/site-packages/ai_drone/flask_streamer.py to flask_streamer.cpython-38.pyc
+[4.177s] byte-compiling /project/ai-drone-ws/install/ai_drone/lib/python3.8/site-packages/ai_drone/video_acquire_ros2.py to video_acquire_ros2.cpython-38.pyc
+[4.181s] byte-compiling /project/ai-drone-ws/install/ai_drone/lib/python3.8/site-packages/ai_drone/overlay_node.py to overlay_node.cpython-38.pyc
+[4.186s] byte-compiling /project/ai-drone-ws/install/ai_drone/lib/python3.8/site-packages/ai_drone/yolo_trt_node.py to yolo_trt_node.cpython-38.pyc
+[4.192s] byte-compiling /project/ai-drone-ws/install/ai_drone/lib/python3.8/site-packages/ai_drone/tracker_node.py to tracker_node.cpython-38.pyc
+[4.195s] running install_data
+[4.199s] running install_egg_info
+[4.204s] removing '/project/ai-drone-ws/install/ai_drone/lib/python3.8/site-packages/ai_drone-0.1.0-py3.8.egg-info' (and everything under it)
+[4.206s] Copying ../../build/ai_drone/ai_drone.egg-info to /project/ai-drone-ws/install/ai_drone/lib/python3.8/site-packages/ai_drone-0.1.0-py3.8.egg-info
+[4.210s] running install_scripts
+[4.276s] Installing flask_streamer script to /project/ai-drone-ws/install/ai_drone/lib/ai_drone
+[4.277s] Installing overlay_node script to /project/ai-drone-ws/install/ai_drone/lib/ai_drone
+[4.278s] Installing tracker_node script to /project/ai-drone-ws/install/ai_drone/lib/ai_drone
+[4.278s] Installing video_acquire_ros2 script to /project/ai-drone-ws/install/ai_drone/lib/ai_drone
+[4.278s] Installing yolo_trt_node script to /project/ai-drone-ws/install/ai_drone/lib/ai_drone
+[4.280s] writing list of installed files to '/project/ai-drone-ws/build/ai_drone/install.log'
+[4.378s] Invoked command in '/project/ai-drone-ws/src/ai_drone' returned '0': PYTHONPATH=/project/ai-drone-ws/build/ai_drone/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/project/ai-drone-ws/install/ai_drone/lib/python3.8/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../build/ai_drone build --build-base /project/ai-drone-ws/build/ai_drone/build install --record /project/ai-drone-ws/build/ai_drone/install.log --install-scripts $base/lib/ai_drone --single-version-externally-managed install_data

@@ -1,0 +1,9 @@
+[console_scripts]
+flask_streamer = ai_drone.flask_streamer:main
+overlay_node = ai_drone.overlay_node:main
+process_perception = ai_drone.process_perception:main
+telemetry_acquire = ai_drone.telemetry_acquire:main
+tracker_node = ai_drone.tracker_node:main
+video_acquire_ros2 = ai_drone.video_acquire_ros2:main
+yolo_trt_node = ai_drone.yolo_trt_node:main
+
