@@ -1,4 +1,5 @@
-import json, math, socket, threading, time
+
+import json, math, threading, time
 from typing import Optional, Tuple
 
 import rclpy
@@ -6,11 +7,10 @@ from rclpy.node import Node
 from std_msgs.msg import String
 from geometry_msgs.msg import PoseStamped, Quaternion
 
-# ----------------------- EDIT HERE (source of telemetry) ----------------------
-TELEM_HOST = "192.168.55.100"   # your laptop that runs the small simulator
-TELEM_PORT = 9001               # simulator TCP port
-RECONNECT_SEC = 2.0
-# -----------------------------------------------------------------------------
+from flask import Flask, request
+
+FLASK_HOST = "0.0.0.0"  # Listen on all interfaces
+FLASK_PORT = 8000       # Port to receive telemetry POSTs
 
 def quat_from_euler(roll: float, pitch: float, yaw: float) -> Quaternion:
     """roll/pitch/yaw in radians → geometry_msgs/Quaternion"""
@@ -31,9 +31,10 @@ def meters_per_deg(lat_deg: float) -> Tuple[float, float]:
     m_per_deg_lon = 111412.84*math.cos(lat) - 93.5*math.cos(3*lat) + 0.118*math.cos(5*lat)
     return m_per_deg_lat, m_per_deg_lon
 
+
 class TelemetryAcquire(Node):
     """
-    Reads newline-delimited JSON over TCP from TELEM_HOST:TELEM_PORT.
+    Receives telemetry via HTTP POST (Flask) from phone app.
     Expected fields (any extra are ignored):
       { "ts": 169..., "lat": xx.x, "lon": yy.y, "alt": 12.3,
         "yaw_deg": 123.4, "pitch_deg": 0.0 (opt), "roll_deg": 0.0 (opt) }
@@ -52,94 +53,153 @@ class TelemetryAcquire(Node):
 
         self._home: Optional[Tuple[float,float]] = None  # (lat0, lon0)
         self._mdeg: Tuple[float,float] = (111320.0, 111320.0)  # lat/lon meters per degree
-        self._stop = False
 
-        threading.Thread(target=self._loop, daemon=True).start()
-        self.get_logger().info(f"TelemetryAcquire connecting to {TELEM_HOST}:{TELEM_PORT}")
+        # Start Flask server in background thread
+        threading.Thread(target=self._run_flask, daemon=True).start()
+        self.get_logger().info(f"TelemetryAcquire HTTP server on {FLASK_HOST}:{FLASK_PORT}")
 
-    # ----------------------------- TCP loop -----------------------------------
-    def _loop(self):
-        while not self._stop:
+    def _run_flask(self):
+        flask_app = Flask(__name__)
+
+        @flask_app.route('/data', methods=['POST'])
+        def receive_data():
+            data = request.get_data(as_text=True)
+            self.get_logger().info(f"Received data: {data}")
+            pkt = None
             try:
-                with socket.create_connection((TELEM_HOST, TELEM_PORT), timeout=5.0) as s:
-                    s.settimeout(5.0)
-                    self.get_logger().info("Telemetry TCP connected ✅")
-
-                    buf = b""
-                    while not self._stop:
-                        chunk = s.recv(4096)
-                        if not chunk:
-                            raise ConnectionError("socket closed")
-                        buf += chunk
-                        while b"\n" in buf:
-                            line, buf = buf.split(b"\n", 1)
-                            line = line.strip()
-                            if not line:
-                                continue
-                            self._handle_packet(line)
+                js = json.loads(data)
+                # If top-level is a list, find latest location and orientation
+                if isinstance(js, list):
+                    # Find latest location and orientation entries by 'time' field
+                    loc = None
+                    ori = None
+                    for entry in reversed(js):
+                        if isinstance(entry, dict):
+                            if loc is None and entry.get('name') == 'location':
+                                loc = entry
+                            if ori is None and entry.get('name') == 'orientation':
+                                ori = entry
+                        if loc and ori:
+                            break
+                    if loc and 'values' in loc and isinstance(loc['values'], dict):
+                        vloc = loc['values']
+                        lat = float(vloc.get("latitude", 0.0))
+                        lon = float(vloc.get("longitude", 0.0))
+                        alt = float(vloc.get("altitude", 0.0))
+                        yaw = float(vloc.get("course", 0.0))
+                        ts = float(loc.get("time", time.time()))
+                        # Default pitch/roll to 0
+                        pitch = 0.0
+                        roll = 0.0
+                        if ori and 'values' in ori and isinstance(ori['values'], dict):
+                            vori = ori['values']
+                            # SensorLog/Logger may use radians for yaw/pitch/roll
+                            # Convert to degrees if so
+                            yaw = float(vori.get("yaw", yaw))
+                            pitch = float(vori.get("pitch", 0.0))
+                            roll = float(vori.get("roll", 0.0))
+                            # If values are in radians (abs(yaw) < 2pi), convert to deg
+                            if abs(yaw) < 7 and abs(pitch) < 7 and abs(roll) < 7:
+                                yaw = math.degrees(yaw)
+                                pitch = math.degrees(pitch)
+                                roll = math.degrees(roll)
+                        pkt = {
+                            "lat": lat,
+                            "lon": lon,
+                            "alt": alt,
+                            "yaw_deg": yaw,
+                            "pitch_deg": pitch,
+                            "roll_deg": roll,
+                            "ts": ts
+                        }
+                # Fallback: try dict with 'payload' or flat dict
+                elif isinstance(js, dict):
+                    if 'payload' in js and isinstance(js['payload'], list):
+                        loc = None
+                        for entry in js['payload']:
+                            if isinstance(entry, dict) and entry.get('name') == 'location':
+                                loc = entry
+                                break
+                        if loc and 'values' in loc and isinstance(loc['values'], dict):
+                            v = loc['values']
+                            pkt = {
+                                "lat": float(v.get("latitude", 0.0)),
+                                "lon": float(v.get("longitude", 0.0)),
+                                "alt": float(v.get("altitude", 0.0)),
+                                "yaw_deg": float(v.get("course", 0.0)),
+                                "pitch_deg": float(v.get("pitch", 0.0)),
+                                "roll_deg": float(v.get("roll", 0.0)),
+                                "ts": float(loc.get("ts", js.get("ts", time.time())))
+                            }
+                    elif all(k in js for k in ("lat", "lon")):
+                        pkt = js
             except Exception as e:
-                self.get_logger().warn(f"Telemetry connect failed: {e}")
-                time.sleep(RECONNECT_SEC)
+                self.get_logger().warn(f"JSON parse error: {e}")
+            if pkt:
+                self._handle_packet(pkt)
+                return '', 200
+            else:
+                self.get_logger().warn("Bad telemetry packet received")
+                return 'Bad data', 400
 
-    # ----------------------------- Packet path --------------------------------
-    def _handle_packet(self, raw: bytes):
+        flask_app.run(host=FLASK_HOST, port=FLASK_PORT, debug=False, use_reloader=False, threaded=True)
+
+    def _handle_packet(self, pkt: dict):
         try:
-            pkt = json.loads(raw.decode("utf-8", errors="ignore"))
+            ts   = float(pkt.get("ts", time.time()))
+            lat  = float(pkt["lat"])
+            lon  = float(pkt["lon"])
+            alt  = float(pkt.get("alt", 0.0))
+            yawd = float(pkt.get("yaw_deg", 0.0))
+            pitchd = float(pkt.get("pitch_deg", 0.0))
+            rolld  = float(pkt.get("roll_deg", 0.0))
+
+            if self._home is None:
+                self._home = (lat, lon)
+                self._mdeg = meters_per_deg(lat)
+            lat0, lon0 = self._home
+            mlat, mlon = self._mdeg
+
+            # local ENU (meters) using equirectangular approximation
+            x = (lon - lon0) * mlon  # East
+            y = (lat - lat0) * mlat  # North
+            z = alt                  # Up (treat as height; refine later with AGL if available)
+
+            # PoseStamped
+            ps = PoseStamped()
+            ps.header.stamp = self.get_clock().now().to_msg()
+            ps.header.frame_id = "map"
+            ps.pose.position.x = float(x)
+            ps.pose.position.y = float(y)
+            ps.pose.position.z = float(z)
+
+            # orientation from roll/pitch/yaw if provided (degrees → rad)
+            q = quat_from_euler(
+                math.radians(rolld),
+                math.radians(pitchd),
+                math.radians(yawd)
+            )
+            ps.pose.orientation = q
+            self.pub_pose.publish(ps)
+
+            # Publish normalized raw JSON (+ ENU)
+            out = {
+                "ts": ts,
+                "lat": lat, "lon": lon, "alt": alt,
+                "yaw_deg": yawd, "pitch_deg": pitchd, "roll_deg": rolld,
+                "enu": {"x": x, "y": y, "z": z}
+            }
+            m = String(); m.data = json.dumps(out, separators=(',', ':'))
+            self.pub_raw.publish(m)
+
+            # HUD lines for overlay
+            line1 = f"LAT {lat:.6f}  LON {lon:.6f}"
+            line2 = f"ALT {alt:.1f} m   YAW {yawd:.1f}°"
+            hud = String(); hud.data = json.dumps({"lines":[line1, line2]}, separators=(',', ':'))
+            self.pub_lines.publish(hud)
         except Exception as e:
-            self.get_logger().warn(f"bad JSON: {e}")
-            return
+            self.get_logger().warn(f"bad telemetry packet: {e}")
 
-        ts   = float(pkt.get("ts", time.time()))
-        lat  = float(pkt["lat"])
-        lon  = float(pkt["lon"])
-        alt  = float(pkt.get("alt", 0.0))
-        yawd = float(pkt.get("yaw_deg", 0.0))
-        pitchd = float(pkt.get("pitch_deg", 0.0))
-        rolld  = float(pkt.get("roll_deg", 0.0))
-
-        if self._home is None:
-            self._home = (lat, lon)
-            self._mdeg = meters_per_deg(lat)
-        lat0, lon0 = self._home
-        mlat, mlon = self._mdeg
-
-        # local ENU (meters) using equirectangular approximation
-        x = (lon - lon0) * mlon  # East
-        y = (lat - lat0) * mlat  # North
-        z = alt                  # Up (treat as height; refine later with AGL if available)
-
-        # PoseStamped
-        ps = PoseStamped()
-        ps.header.stamp = self.get_clock().now().to_msg()
-        ps.header.frame_id = "map"
-        ps.pose.position.x = float(x)
-        ps.pose.position.y = float(y)
-        ps.pose.position.z = float(z)
-
-        # orientation from roll/pitch/yaw if provided (degrees → rad)
-        q = quat_from_euler(
-            math.radians(rolld),
-            math.radians(pitchd),
-            math.radians(yawd)
-        )
-        ps.pose.orientation = q
-        self.pub_pose.publish(ps)
-
-        # Publish normalized raw JSON (+ ENU)
-        out = {
-            "ts": ts,
-            "lat": lat, "lon": lon, "alt": alt,
-            "yaw_deg": yawd, "pitch_deg": pitchd, "roll_deg": rolld,
-            "enu": {"x": x, "y": y, "z": z}
-        }
-        m = String(); m.data = json.dumps(out, separators=(',', ':'))
-        self.pub_raw.publish(m)
-
-        # HUD lines for overlay
-        line1 = f"LAT {lat:.6f}  LON {lon:.6f}"
-        line2 = f"ALT {alt:.1f} m   YAW {yawd:.1f}°"
-        hud = String(); hud.data = json.dumps({"lines":[line1, line2]}, separators=(',', ':'))
-        self.pub_lines.publish(hud)
 
 def main():
     rclpy.init()
@@ -148,7 +208,6 @@ def main():
         rclpy.spin(n)
     except KeyboardInterrupt:
         pass
-    n._stop = True
     n.destroy_node()
     rclpy.shutdown()
 

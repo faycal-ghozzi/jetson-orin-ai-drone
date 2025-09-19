@@ -1,1 +1,1 @@
-cv_bridge:geometry_msgs:python3-opencv:rclpy:sensor_msgs:std_msgs:vision_msgs
+ament_index_python:cv_bridge:geometry_msgs:python3-opencv:rclpy:sensor_msgs:std_msgs:vision_msgs

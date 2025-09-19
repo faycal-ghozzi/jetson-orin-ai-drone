@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Flask backend (API + MJPEG) for AI-Drone, no UI.
 
@@ -21,7 +20,7 @@ from sensor_msgs.msg import CompressedImage
 from std_msgs.msg import String
 from flask import Flask, Response, jsonify, request
 
-# ------------------------- config defaults (hardcoded) -------------------------
+# config defaults
 DEFAULT_STREAM_TOPIC = "/camera/overlay/compressed"
 DEFAULT_PORT         = 5000
 READY_TIMEOUT_S      = 3.0
@@ -31,10 +30,8 @@ CLASS_MAP: Dict[str, str] = {
     "7": "truck",
 }
 
-# --------------------------------- Flask app ----------------------------------
 app = Flask(__name__)
 
-# Very simple CORS for JSON endpoints (fine for internal tooling)
 @app.after_request
 def add_cors_headers(resp):
     resp.headers['Access-Control-Allow-Origin']  = request.headers.get('Origin', '*')
@@ -121,23 +118,20 @@ class FlaskStream(Node):
         topic_img = os.getenv('STREAM_TOPIC', DEFAULT_STREAM_TOPIC)
         port      = int(os.getenv('FLASK_PORT', DEFAULT_PORT))
 
-        # Subscriptions
         self.sub_img = self.create_subscription(CompressedImage, topic_img, self._on_img, 10)
         self.sub_det = self.create_subscription(String, '/detections_raw', self._on_det, 10)
         self.sub_tel = self.create_subscription(String, '/telemetry/raw', self._on_tel, 10)
 
-        # Yaw unwrap helpers
         self._yaw_last = None
         self._yaw_cont = 0.0
 
-        # Run Flask in background thread
         threading.Thread(
             target=lambda: app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False, threaded=True),
             daemon=True
         ).start()
         self.get_logger().info(f'Flask API on http://0.0.0.0:{port}  (stream={topic_img})')
 
-    # --- callbacks ---
+    # callbacks
     def _on_img(self, msg: CompressedImage):
         latest['jpg'] = bytes(msg.data)
         latest['t'] = _now()
@@ -203,7 +197,7 @@ class FlaskStream(Node):
             tstate["pitch_deg"] = _to_float(j.get("pitch_deg"))
             tstate["roll_deg"]  = _to_float(j.get("roll_deg"))
         except Exception:
-            tstate["ready"] = False  # bad packet => mark not-ready
+            tstate["ready"] = False
 
 def _to_float(v):
     try:

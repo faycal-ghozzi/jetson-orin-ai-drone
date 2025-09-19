@@ -1,1 +1,26 @@
-/project/ai-drone-ws/build/ai_drone/package.xml
+<?xml version="1.0"?>
+<package format="3">
+  <name>ai_drone</name>
+  <version>0.1.0</version>
+  <description>Pipeline ROS2: RTSP + TensorRT YOLOv8 + Flask MJPEG</description>
+  <maintainer email="fghozzi@cesi.fr">ai-drone</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>ament_python</buildtool_depend>
+
+  <!-- Dépendances runtime ROS -->
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>vision_msgs</exec_depend>
+  <exec_depend>cv_bridge</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>python3-opencv</exec_depend>
+  <exec_depend>ament_index_python</exec_depend>
+  
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>
+

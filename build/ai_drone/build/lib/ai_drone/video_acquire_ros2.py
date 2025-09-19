@@ -7,10 +7,10 @@ from cv_bridge import CvBridge
 
 # Hardcoded Video Parameters
 # ==============================
-RTSP_URL     = "rtsp://admin:1234@192.0.0.2:8554/live"
+RTSP_URL     = "rtsp://admin:1234@10.191.67.102:8554/live"
 VIDEO_WIDTH  = 640
 VIDEO_HEIGHT = 480
-VIDEO_FPS    = 200
+VIDEO_FPS    = 24
 VIDEO_LATENCY = 0
 VIDEO_USE_HW = True
 VIDEO_ROTATE = 270

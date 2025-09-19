@@ -9,7 +9,7 @@ from std_msgs.msg import String
 
 # Hard-coded YOLO config
 # ==============================================================
-PT_PATH       = "/project/ai-drone-ws/src/ai_drone/ai_drone/models/yolov8n.pt"
+PT_PATH       = "~/ai-drone-ws/src/ai_drone/ai_drone/models/yolov8n.pt"
 CONF_TH       = 0.25
 KEEP_CLASSES  = (0, 7)   # 0=person, 7=truck
 IMG_SZ_GPU    = 416      # good balance on Jetson GPU

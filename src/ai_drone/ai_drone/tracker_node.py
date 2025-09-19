@@ -4,13 +4,10 @@ import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String, Int32MultiArray
 
-# Tracker configuration (hard-coded)
-# ==============================================================
+# Tracker configuration
 MAX_AGE = 10           # number of frames before a track is removed
 DIST_TH = 100.0        # maximum distance to associate (pixels)
 DIST_TH2 = DIST_TH ** 2
-# ==============================================================
-
 
 class Tracker(Node):
     """
@@ -74,7 +71,7 @@ class Tracker(Node):
         out = Int32MultiArray()
         out.data = []
         for (x, y), tid in zip(centers, ids):
-            out.data += [int(x), int(y), int(tid)]
+            out.data.extend([int(x), int(y), int(tid)])
         self.pub.publish(out)
 
 

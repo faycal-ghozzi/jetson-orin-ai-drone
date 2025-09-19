@@ -1,1 +1,1 @@
-prepend-non-duplicate;PYTHONPATH;/project/ai-drone-ws/build/ai_drone
+prepend-non-duplicate;PYTHONPATH;/home/reisar/ai-drone-ws/build/ai_drone

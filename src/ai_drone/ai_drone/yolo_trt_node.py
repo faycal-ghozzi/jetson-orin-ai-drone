@@ -7,15 +7,13 @@ from rclpy.node import Node
 from sensor_msgs.msg import CompressedImage
 from std_msgs.msg import String
 
-# Hard-coded YOLO config
-# ==============================================================
-PT_PATH       = "/project/ai-drone-ws/src/ai_drone/ai_drone/models/yolov8n.pt"
+# YOLO config
+PT_PATH       = "~/ai-drone-ws/src/ai_drone/ai_drone/models/yolov8n.pt"
 CONF_TH       = 0.25
-KEEP_CLASSES  = (0, 7)   # 0=person, 7=truck
-IMG_SZ_GPU    = 416      # good balance on Jetson GPU
-IMG_SZ_CPU    = 320      # lighter when CPU fallback
+KEEP_CLASSES  = (0, 7)  # person, truck
+IMG_SZ_GPU    = 416  
+IMG_SZ_CPU    = 320
 NMS_IOU       = 0.45
-# ==============================================================
 
 
 class YoloFromCompressed(Node):

@@ -1,0 +1,16 @@
+test.py
+yolov8n.pt
+/build/
+/install/
+/log/
+src/ai_drone/__pycache__/
+src/ai_drone/ai_drone/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+.pytest_cache/
+/src/ai_drone/ai_drone/.env
+/src/ai_drone/ai_drone/models/
+/src/collect.py
+/src/collected_sources.txt

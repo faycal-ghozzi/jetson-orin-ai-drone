@@ -1,130 +1,224 @@
-import threading, time
-from flask import Flask, Response, jsonify, redirect, url_for
+#!/usr/bin/env python3
+"""
+Flask backend (API + MJPEG) for AI-Drone, no UI.
+
+Endpoints
+- GET  /api/state       : consolidated JSON (video, YOLO, telemetry, class map, settings)
+- GET  /api/settings    : current settings
+- POST /api/settings    : update settings (e.g., {"onlyWhenYolo":true,"jpegQuality":80})
+- GET  /video           : MJPEG stream (served when frames exist)
+- GET  /snapshot.jpg    : last JPEG frame
+- GET  /healthz         : minimal health for probes
+- GET  /telemetry/live.json : legacy telemetry snapshot (compat)
+"""
+
+import os, json, time, math, threading
+from typing import Dict, Any
+
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import CompressedImage
-from geometry_msgs.msg import PoseStamped
 from std_msgs.msg import String
+from flask import Flask, Response, jsonify, request
 
-STREAM_TOPIC = "/camera/overlay/compressed"
-FLASK_PORT = 5000
-READY_TIMEOUT_S = 3.0
+# ------------------------- config defaults (hardcoded) -------------------------
+DEFAULT_STREAM_TOPIC = "/camera/overlay/compressed"
+DEFAULT_PORT         = 5000
+READY_TIMEOUT_S      = 3.0
 
-app = Flask(__name__)
-
-_latest_jpg = b""
-_latest_jpg_t = 0.0
-
-_tel = {
-    "ts": 0.0,
-    "lat": None, "lon": None, "alt": None,
-    "yaw_deg": None, "pitch_deg": None, "roll_deg": None,
-    "enu": {"x": None, "y": None, "z": None}
+CLASS_MAP: Dict[str, str] = {
+    "0": "person",
+    "7": "truck",
 }
 
-HTML_INDEX = """<!doctype html>
-<title>AI-Drone</title>
-<style>body{background:#111;color:#ccc;font:16px/1.4 system-ui,Segoe UI,Roboto,sans-serif} .wrap{max-width:1200px;margin:24px auto;text-align:center} img{max-width:100%;height:auto;background:#000} a{color:#7fd}</style>
-<div class="wrap">
-  <h1>AI-Drone Stream</h1>
-  <p><a href="/snapshot.jpg" target="_blank">Snapshot</a> ·
-     <a href="/healthz" target="_blank">Health</a> ·
-     <a href="/telemetry/live.json" target="_blank">Telemetry JSON</a></p>
-  <img src="/video" alt="stream"/>
-</div>
-"""
+# --------------------------------- Flask app ----------------------------------
+app = Flask(__name__)
+
+# Very simple CORS for JSON endpoints (fine for internal tooling)
+@app.after_request
+def add_cors_headers(resp):
+    resp.headers['Access-Control-Allow-Origin']  = request.headers.get('Origin', '*')
+    resp.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+    resp.headers['Access-Control-Allow-Methods'] = 'GET,POST,OPTIONS'
+    return resp
+
+latest = {'jpg': None, 't': 0.0}
+
+state: Dict[str, Any] = {
+    "video": {"ready": False, "age_ms": -1, "fps": 0.0, "last_t": 0.0},
+    "yolo":  {"ready": False, "age_ms": -1, "fps": 0.0, "last_t": 0.0,
+              "class_counts": {}, "backend": None, "ms": None},
+    "telemetry": {"ready": False, "ts": 0.0, "lat": None, "lon": None, "alt": None,
+                  "yaw_deg": None, "yaw_deg_norm": None, "yaw_deg_cont": None,
+                  "pitch_deg": None, "roll_deg": None},
+    "class_map": CLASS_MAP,
+    "settings": {"onlyWhenYolo": True, "jpegQuality": 80}
+}
 
 def _now(): return time.monotonic()
 
-@app.route("/")
-def index(): return HTML_INDEX
+@app.route('/api/state')
+def api_state():
+    now = _now()
+    v = state["video"]
+    y = state["yolo"]
+    v["age_ms"] = int((now - latest['t']) * 1000) if latest['t'] else -1
+    y["age_ms"] = int((now - y["last_t"]) * 1000) if y["last_t"] else -1
+    v["ready"]  = (latest['jpg'] is not None)
+    return jsonify(state)
+
+@app.route('/api/settings', methods=['GET','POST','OPTIONS'])
+def api_settings():
+    if request.method == 'POST':
+        incoming = request.get_json(silent=True) or {}
+        for k in ("onlyWhenYolo", "jpegQuality"):
+            if k in incoming:
+                state["settings"][k] = incoming[k]
+    return jsonify(state["settings"])
 
 def _mjpeg_gen():
-    boundary = b"--frame\r\nContent-Type: image/jpeg\r\n\r\n"
+    boundary = b'--frame\r\nContent-Type: image/jpeg\r\n\r\n'
     while True:
-        if _latest_jpg:
-            yield boundary + _latest_jpg + b"\r\n"
+        buf = latest['jpg']
+        if buf is not None:
+            yield boundary + buf + b'\r\n'
         time.sleep(0.01)
 
-@app.route("/video")
+@app.route('/video')
 def video():
     t0 = _now()
-    while not _latest_jpg and (_now() - t0) < READY_TIMEOUT_S:
+    while latest['jpg'] is None and (_now() - t0) < READY_TIMEOUT_S:
         time.sleep(0.05)
-    if not _latest_jpg:
+    if latest['jpg'] is None:
         return jsonify(error="no frames yet", ready=False), 503
-    return Response(_mjpeg_gen(), mimetype="multipart/x-mixed-replace; boundary=frame")
+    return Response(_mjpeg_gen(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
-@app.route("/snapshot.jpg")
+@app.route('/snapshot.jpg')
 def snapshot():
-    if not _latest_jpg:
+    if latest['jpg'] is None:
         return jsonify(error="no snapshot yet"), 503
-    return Response(_latest_jpg, mimetype="image/jpeg")
+    return Response(latest['jpg'], mimetype='image/jpeg')
 
-@app.route("/healthz")
+@app.route('/healthz')
 def healthz():
-    age_ms = int((_now() - _latest_jpg_t) * 1000) if _latest_jpg_t else -1
-    return jsonify(ready=bool(_latest_jpg), age_ms=age_ms)
+    y = state["yolo"]
+    return jsonify(
+        ready=(latest['jpg'] is not None),
+        yolo_ready=y["ready"],
+        yolo_backend=y["backend"],
+        yolo_fps=y["fps"],
+        infer_ms=y["ms"],
+    )
 
-@app.route("/telemetry/live.json")
-def telemetry_live():
-    age = time.time() - (_tel["ts"] or 0.0)
-    ready = age < 2.0
-    return jsonify({"ready":ready, "age_ms": int(age*1000) if _tel["ts"] else -1, **_tel})
-
-@app.errorhandler(404)
-def not_found(_): return redirect(url_for("index"))
+@app.route('/telemetry/live.json')
+def tele_compat():
+    t = state["telemetry"]
+    return jsonify({"ready": t["ready"], **t} if t["ready"] else {"ready": False})
 
 class FlaskStream(Node):
     def __init__(self):
-        super().__init__("flask")
-        self.create_subscription(CompressedImage, STREAM_TOPIC, self._on_img, 10)
-        self.create_subscription(PoseStamped, "/telemetry/pose", self._on_pose, 10)
-        self.create_subscription(String, "/telemetry/raw", self._on_raw, 10)
+        super().__init__('flask')
+        topic_img = os.getenv('STREAM_TOPIC', DEFAULT_STREAM_TOPIC)
+        port      = int(os.getenv('FLASK_PORT', DEFAULT_PORT))
 
+        # Subscriptions
+        self.sub_img = self.create_subscription(CompressedImage, topic_img, self._on_img, 10)
+        self.sub_det = self.create_subscription(String, '/detections_raw', self._on_det, 10)
+        self.sub_tel = self.create_subscription(String, '/telemetry/raw', self._on_tel, 10)
+
+        # Yaw unwrap helpers
+        self._yaw_last = None
+        self._yaw_cont = 0.0
+
+        # Run Flask in background thread
         threading.Thread(
-            target=lambda: app.run(host="0.0.0.0", port=FLASK_PORT, debug=False, use_reloader=False),
+            target=lambda: app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False, threaded=True),
             daemon=True
         ).start()
-        self.get_logger().info(f"Flask: http://0.0.0.0:{FLASK_PORT}/  (topic={STREAM_TOPIC})")
+        self.get_logger().info(f'Flask API on http://0.0.0.0:{port}  (stream={topic_img})')
 
+    # --- callbacks ---
     def _on_img(self, msg: CompressedImage):
-        global _latest_jpg, _latest_jpg_t
-        _latest_jpg = bytes(msg.data)
-        _latest_jpg_t = _now()
+        latest['jpg'] = bytes(msg.data)
+        latest['t'] = _now()
+        v = state["video"]
+        t = _now()
+        if v["last_t"] > 0:
+            inst = 1.0 / max(1e-6, (t - v["last_t"]))
+            v["fps"] = 0.9 * v["fps"] + 0.1 * inst
+        v["last_t"] = t
 
-    def _on_pose(self, msg: PoseStamped):
-        # also mirror ENU for convenience in JSON
-        _tel["enu"]["x"] = float(msg.pose.position.x)
-        _tel["enu"]["y"] = float(msg.pose.position.y)
-        _tel["enu"]["z"] = float(msg.pose.position.z)
-        _tel["ts"] = time.time()
-
-    def _on_raw(self, msg: String):
+    def _on_det(self, msg: String):
+        y = state["yolo"]
+        t = _now()
+        y["last_t"] = t
+        y["ready"] = True
         try:
             j = json.loads(msg.data)
-            _tel.update({
-                "ts": float(j.get("ts", time.time())),
-                "lat": j.get("lat"), "lon": j.get("lon"), "alt": j.get("alt"),
-                "yaw_deg": j.get("yaw_deg"), "pitch_deg": j.get("pitch_deg"), "roll_deg": j.get("roll_deg"),
-            })
-            if "enu" in j:
-                _tel["enu"] = {
-                    "x": j["enu"].get("x"), "y": j["enu"].get("y"), "z": j["enu"].get("z")
-                }
+            # If payload contains meta info from yolo_trt_node
+            meta = j.get("meta") or {}
+            if "backend" in meta: y["backend"] = meta.get("backend")
+            if "ms" in meta:      y["ms"]      = float(meta.get("ms", 0))
+            if "fps" in meta:     y["fps"]     = float(meta.get("fps", y["fps"]))
+            # Class counts either in meta or compute from detections
+            if "class_counts" in meta:
+                y["class_counts"] = {str(k): int(v) for k, v in meta["class_counts"].items()}
+            else:
+                dets = j.get("detections", [])
+                counts = {}
+                for d in dets:
+                    cls = str(d.get("cls"))
+                    if cls is None: continue
+                    counts[cls] = counts.get(cls, 0) + 1
+                y["class_counts"] = counts
         except Exception:
             pass
+
+    def _on_tel(self, msg: String):
+        tstate = state["telemetry"]
+        try:
+            j = json.loads(msg.data)
+            tstate["ready"] = True
+            tstate["ts"]    = float(j.get("ts", time.time()))
+            tstate["lat"]   = _to_float(j.get("lat"))
+            tstate["lon"]   = _to_float(j.get("lon"))
+            tstate["alt"]   = _to_float(j.get("alt"))
+
+            yaw = _to_float(j.get("yaw_deg"))
+            if yaw is not None:
+                # normalize -180..180
+                yaw_norm = ((yaw + 180.0) % 360.0) - 180.0
+                tstate["yaw_deg"]      = yaw
+                tstate["yaw_deg_norm"] = yaw_norm
+                # unwrap for continuity
+                if self._yaw_last is None:
+                    self._yaw_cont = yaw
+                else:
+                    d = yaw - self._yaw_last
+                    d = (d + 180.0) % 360.0 - 180.0  # shortest arc
+                    # self._yaw_cont += d
+                self._yaw_last = yaw
+                tstate["yaw_deg_cont"] = self._yaw_cont
+
+            tstate["pitch_deg"] = _to_float(j.get("pitch_deg"))
+            tstate["roll_deg"]  = _to_float(j.get("roll_deg"))
+        except Exception:
+            tstate["ready"] = False  # bad packet => mark not-ready
+
+def _to_float(v):
+    try:
+        if v is None: return None
+        return float(v)
+    except Exception:
+        return None
 
 def main():
     rclpy.init()
     n = FlaskStream()
-    try:
-        rclpy.spin(n)
-    except KeyboardInterrupt:
-        pass
+    rclpy.spin(n)
     n.destroy_node()
     rclpy.shutdown()
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
 

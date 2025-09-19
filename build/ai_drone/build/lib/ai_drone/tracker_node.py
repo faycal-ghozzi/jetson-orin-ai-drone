@@ -74,7 +74,7 @@ class Tracker(Node):
         out = Int32MultiArray()
         out.data = []
         for (x, y), tid in zip(centers, ids):
-            out.data += [int(x), int(y), int(tid)]
+            out.data.extend([int(x), int(y), int(tid)])
         self.pub.publish(out)
 
 

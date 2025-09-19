@@ -1,1 +1,0 @@
-/project/ai-drone-ws/src/ai_drone/setup.py
