@@ -19,6 +19,7 @@ setup(
     entry_points={
         'console_scripts': [
             'video_acquire_ros2 = ai_drone.video_acquire_ros2:main',
+            'video_file = ai_drone.video_file:main',
             'yolo_trt_node = ai_drone.yolo_trt_node:main',
             'tracker_node = ai_drone.tracker_node:main',
             'flask_streamer = ai_drone.flask_streamer:main',
