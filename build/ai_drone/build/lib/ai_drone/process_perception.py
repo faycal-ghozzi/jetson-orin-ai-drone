@@ -67,7 +67,7 @@ class PerceptionProcessor(Node):
         self._last_status = 0.0
         self.get_logger().info("PerceptionProcessor ready ✅ (ground reprojection)")
 
-    # ---------------------------- callbacks -----------------------------------
+    # callbacks 
     def on_pose(self, msg: PoseStamped):
         self.pose_xy = (float(msg.pose.position.x), float(msg.pose.position.y))
         self.alt_m   = float(msg.pose.position.z)
@@ -75,7 +75,6 @@ class PerceptionProcessor(Node):
         x,y,z,w = msg.pose.orientation.x, msg.pose.orientation.y, msg.pose.orientation.z, msg.pose.orientation.w
         roll, pitch, yaw = euler_from_quat(x,y,z,w)
         self.yaw_rad = yaw
-        # We want "pitch_down" positive when camera looks down; pitch is +up in ENU, so:
         self.pitch_rad = -pitch
 
     def on_dets(self, msg: String):
@@ -96,7 +95,7 @@ class PerceptionProcessor(Node):
             except Exception:
                 continue
 
-            u = 0.5*(x1+x2)   # bottom center for ground contact
+            u = 0.5*(x1+x2)
             v = y2
 
             du = (u - self.cx) / self.fx
@@ -122,11 +121,9 @@ class PerceptionProcessor(Node):
                            "cls": clsid, "score": score, "range_m": float(R)})
             hints.append({"cx": float(u), "cy": float(v), "range_m": float(R)})
 
-        # publish results
         self.pub_ground.publish(String(data=json.dumps({"points": points, "ts": time.time()}, separators=(',',':'))))
         self.pub_range.publish(String(data=json.dumps({"hints": hints, "ts": time.time()}, separators=(',',':'))))
 
-        # status line on the video
         now = time.time()
         if now - self._last_status > 1.0 / STATUS_HZ:
             dt_ms = (now - t0)*1000.0

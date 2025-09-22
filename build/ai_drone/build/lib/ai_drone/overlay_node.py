@@ -14,7 +14,6 @@ class OverlayNode(Node):
         super().__init__("overlay")
         self.bridge = CvBridge()
 
-        # subs
         self.create_subscription(Image, "/camera/image", self._on_img, 10)
         self.create_subscription(String, "/detections_raw", self._on_det, 10)
         self.create_subscription(Int32MultiArray, "/tracks_xy_id", self._on_tracks, 10)
@@ -22,18 +21,16 @@ class OverlayNode(Node):
         self.create_subscription(String, "/overlay/lines", self._on_lines_system, 10)
         self.create_subscription(String, "/telemetry/overlay_lines", self._on_lines_telemetry, 10)
 
-        # pubs
         self.pub_img = self.create_publisher(Image, "/camera/overlay", 10)
         self.pub_jpg = self.create_publisher(CompressedImage, "/camera/overlay/compressed", 10)
 
-        # state
         self.last_dets = []
         self.last_ids  = []
         self.last_ranges = []
         self.lines_system = []
         self.lines_telem  = []
 
-        self.get_logger().info("OverlayNode ready ✅")
+        self.get_logger().info("OverlayNode ready")
 
     def _on_det(self, msg: String):
         try: self.last_dets = json.loads(msg.data).get("detections", [])

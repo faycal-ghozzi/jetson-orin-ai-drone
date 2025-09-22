@@ -67,45 +67,6 @@ class TelemetryAcquire(Node):
             pkt = None
             try:
                 js = json.loads(data)
-                # if isinstance(js, list):
-                #     loc = None
-                #     ori = None
-                #     for entry in reversed(js):
-                #         if isinstance(entry, dict):
-                #             if loc is None and entry.get('name') == 'location':
-                #                 loc = entry
-                #             if ori is None and entry.get('name') == 'orientation':
-                #                 ori = entry
-                #         if loc and ori:
-                #             break
-                #     if loc and 'values' in loc and isinstance(loc['values'], dict):
-                #         vloc = loc['values']
-                #         lat = float(vloc.get("latitude", 0.0))
-                #         lon = float(vloc.get("longitude", 0.0))
-                #         alt = float(vloc.get("altitude", 0.0))
-                #         yaw = float(vloc.get("course", 0.0))
-                #         ts = float(loc.get("time", time.time()))
-                #         # Default pitch/roll to 0
-                #         pitch = 0.0
-                #         roll = 0.0
-                #         if ori and 'values' in ori and isinstance(ori['values'], dict):
-                #             vori = ori['values']
-                #             yaw = float(vori.get("yaw", yaw))
-                #             pitch = float(vori.get("pitch", 0.0))
-                #             roll = float(vori.get("roll", 0.0))
-                #             if abs(yaw) < 7 and abs(pitch) < 7 and abs(roll) < 7:
-                #                 yaw = math.degrees(yaw)
-                #                 pitch = math.degrees(pitch)
-                #                 roll = math.degrees(roll)
-                #         pkt = {
-                #             "lat": lat,
-                #             "lon": lon,
-                #             "alt": alt,
-                #             "yaw_deg": yaw,
-                #             "pitch_deg": pitch,
-                #             "roll_deg": roll,
-                #             "ts": ts
-                #         }
                 if isinstance(js, dict):
                     if 'payload' in js and isinstance(js['payload'], list):
                         loc = None
