@@ -9,11 +9,10 @@ from geometry_msgs.msg import PoseStamped, Quaternion
 
 from flask import Flask, request
 
-FLASK_HOST = "0.0.0.0"
-FLASK_PORT = 8000
+from ai_drone.config import FLASK_HOST, FLASK_PORT
 
 def quat_from_euler(roll: float, pitch: float, yaw: float) -> Quaternion:
-    """roll/pitch/yaw in radians → geometry_msgs/Quaternion"""
+    """roll/pitch/yaw in radians"""
     sr, cr = math.sin(roll*0.5),  math.cos(roll*0.5)
     sp, cp = math.sin(pitch*0.5), math.cos(pitch*0.5)
     sy, cy = math.sin(yaw*0.5),   math.cos(yaw*0.5)
@@ -25,7 +24,7 @@ def quat_from_euler(roll: float, pitch: float, yaw: float) -> Quaternion:
     return q
 
 def meters_per_deg(lat_deg: float) -> Tuple[float, float]:
-    """Very good local approximation of meters per degree at latitude."""
+    """approximation of meters per degree at latitude"""
     lat = math.radians(lat_deg)
     m_per_deg_lat = 111132.92 - 559.82*math.cos(2*lat) + 1.175*math.cos(4*lat) - 0.0023*math.cos(6*lat)
     m_per_deg_lon = 111412.84*math.cos(lat) - 93.5*math.cos(3*lat) + 0.118*math.cos(5*lat)
@@ -34,15 +33,17 @@ def meters_per_deg(lat_deg: float) -> Tuple[float, float]:
 
 class TelemetryAcquire(Node):
     """
-    Receives telemetry via HTTP POST (Flask) from phone app.
-    Expected fields (any extra are ignored):
-      { "ts": 169..., "lat": xx.x, "lon": yy.y, "alt": 12.3,
-        "yaw_deg": 123.4, "pitch_deg": 0.0 (opt), "roll_deg": 0.0 (opt) }
-
-    Publishes:
-      - /telemetry/raw  (std_msgs/String)      # normalized JSON with lat/lon/alt/yaw/… (+ ENU)
-      - /telemetry/pose (geometry_msgs/PoseStamped)  # ENU pose for perception
-      - /telemetry/overlay_lines (std_msgs/String)   # 1-2 lines for on-video HUD
+    reads telemetry via HTTP phone app (Sensor Logger iOS)
+    Expected fields:
+        { 
+            "ts": "", 
+            "lat": "", 
+            "lon": "", 
+            "alt": "",
+            "yaw_deg": "", 
+            "pitch_deg": "" (optional), 
+            "roll_deg": "" (optional) 
+        }
     """
 
     def __init__(self):
@@ -51,7 +52,7 @@ class TelemetryAcquire(Node):
         self.pub_pose  = self.create_publisher(PoseStamped, "/telemetry/pose", 10)
         self.pub_lines = self.create_publisher(String, "/telemetry/overlay_lines", 10)
 
-        self._home: Optional[Tuple[float,float]] = None  # (lat0, lon0)
+        self._home: Optional[Tuple[float,float]] = None
         self._mdeg: Tuple[float,float] = (111320.0, 111320.0)  # lat/lon meters per degree
 
         threading.Thread(target=self._run_flask, daemon=True).start()
@@ -116,7 +117,7 @@ class TelemetryAcquire(Node):
 
             x = (lon - lon0) * mlon  # East
             y = (lat - lat0) * mlat  # North
-            z = alt                  # Up (treat as height; refine later with AGL if available)
+            z = alt                  # Up
 
             ps = PoseStamped()
             ps.header.stamp = self.get_clock().now().to_msg()
@@ -125,7 +126,7 @@ class TelemetryAcquire(Node):
             ps.pose.position.y = float(y)
             ps.pose.position.z = float(z)
 
-            # orientation from roll/pitch/yaw if provided (degrees → rad)
+            # orientation from roll/pitch/yaw (degrees → rad)
             q = quat_from_euler(
                 math.radians(rolld),
                 math.radians(pitchd),
@@ -134,7 +135,6 @@ class TelemetryAcquire(Node):
             ps.pose.orientation = q
             self.pub_pose.publish(ps)
 
-            # Publish normalized raw JSON (+ ENU)
             out = {
                 "ts": ts,
                 "lat": lat, "lon": lon, "alt": alt,
@@ -144,7 +144,6 @@ class TelemetryAcquire(Node):
             m = String(); m.data = json.dumps(out, separators=(',', ':'))
             self.pub_raw.publish(m)
 
-            # HUD lines for overlay
             line1 = f"LAT {lat:.6f}  LON {lon:.6f}"
             line2 = f"ALT {alt:.1f} m   YAW {yawd:.1f}°"
             hud = String(); hud.data = json.dumps({"lines":[line1, line2]}, separators=(',', ':'))

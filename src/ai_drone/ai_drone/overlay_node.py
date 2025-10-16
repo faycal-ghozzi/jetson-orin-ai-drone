@@ -5,7 +5,7 @@ from sensor_msgs.msg import Image, CompressedImage
 from std_msgs.msg import String, Int32MultiArray
 from cv_bridge import CvBridge
 
-COCO = {0:"person",1:"bicycle",2:"car",3:"motorbike",5:"bus",7:"truck"}
+COCO = {0:"person",7:"truck"}
 
 class OverlayNode(Node):
     RANGE_PX_TH2 = 60.0**2
@@ -15,7 +15,7 @@ class OverlayNode(Node):
         self.bridge = CvBridge()
 
         self.create_subscription(Image, "/camera/image", self._on_img, 10)
-        self.create_subscription(String, "/detections_raw", self._on_det, 10)
+        self.create_subscription(String, "/detections_raw", self._on_detection, 10)
         self.create_subscription(Int32MultiArray, "/tracks_xy_id", self._on_tracks, 10)
         self.create_subscription(String, "/reproj/range_hints", self._on_range, 10)
         self.create_subscription(String, "/overlay/lines", self._on_lines_system, 10)
@@ -29,12 +29,20 @@ class OverlayNode(Node):
         self.last_ranges = []
         self.lines_system = []
         self.lines_telem  = []
+        self.last_src_wh = None
 
         self.get_logger().info("OverlayNode ready")
 
-    def _on_det(self, msg: String):
-        try: self.last_dets = json.loads(msg.data).get("detections", [])
-        except Exception: self.last_dets = []
+    def _on_detection(self, msg: String):
+        try:
+            data = json.loads(msg.data)
+            self.last_dets = data.get("detections", [])
+            sw = int(data.get("src_w")) if data.get("src_w") is not None else None
+            sh = int(data.get("src_h")) if data.get("src_h") is not None else None
+            self.last_src_wh = (sw, sh) if (sw and sh) else None
+        except Exception:
+            self.last_dets = []
+            self.last_src_wh = None
 
     def _on_tracks(self, msg: Int32MultiArray):
         v = msg.data; self.last_ids = [(v[i],v[i+1],v[i+2]) for i in range(0,len(v),3)]
@@ -57,18 +65,27 @@ class OverlayNode(Node):
     def _on_img(self, msg: Image):
         img = self.bridge.imgmsg_to_cv2(msg, "bgr8")
         H, W = img.shape[:2]
+
+        sx, sy = 1.0, 1.0
+        if self.last_src_wh is not None:
+            sw, sh = self.last_src_wh
+            if sw and sh and (sw != W or sh != H):
+                sx = W / float(sw)
+                sy = H / float(sh)
+
         centers = []
         for d in self.last_dets:
             try:
-                x1,y1,x2,y2 = map(int,(d["x1"],d["y1"],d["x2"],d["y2"]))
+                x1,y1,x2,y2 = map(float,(d["x1"],d["y1"],d["x2"],d["y2"]))
                 sc = float(d.get("score",0)); c = int(d.get("cls",-1))
             except Exception:
                 continue
+            x1 = int(round(x1 * sx)); x2 = int(round(x2 * sx))
+            y1 = int(round(y1 * sy)); y2 = int(round(y2 * sy))
             x1=max(0,min(W-1,x1)); x2=max(0,min(W-1,x2))
             y1=max(0,min(H-1,y1)); y2=max(0,min(H-1,y2))
             centers.append(((x1+x2)/2.0,(y1+y2)/2.0))
 
-        # match ranges to boxes
         ranges = [None]*len(centers)
         if self.last_ranges and centers:
             c_np = np.array(centers, np.float32)
@@ -81,25 +98,28 @@ class OverlayNode(Node):
 
         font = cv2.FONT_HERSHEY_SIMPLEX
 
-        # draw boxes
         for i, d in enumerate(self.last_dets):
             try:
-                x1,y1,x2,y2 = map(int,(d["x1"],d["y1"],d["x2"],d["y2"]))
+                x1,y1,x2,y2 = map(float,(d["x1"],d["y1"],d["x2"],d["y2"]))
                 sc = float(d.get("score",0)); c = int(d.get("cls",-1))
             except Exception:
                 continue
+            x1 = int(round(x1 * sx)); x2 = int(round(x2 * sx))
+            y1 = int(round(y1 * sy)); y2 = int(round(y2 * sy))
             x1=max(0,min(W-1,x1)); x2=max(0,min(W-1,x2))
             y1=max(0,min(H-1,y1)); y2=max(0,min(H-1,y2))
+            if x2 <= x1 or y2 <= y1:
+                continue
             cv2.rectangle(img,(x1,y1),(x2,y2),(0,255,0),2)
 
             label = f"{COCO.get(c, f'cls:{c}')} {sc:.2f}"
-            if ranges[i] is not None:
+            if i < len(ranges) and ranges[i] is not None:
                 label += f" {ranges[i][0]:.1f}m"
             (tw,th),_ = cv2.getTextSize(label, font, 0.6, 2)
-            cv2.rectangle(img,(x1,max(0,y1-th-8)),(x1+tw+6,y1),(0,255,0),-1)
+            yb = max(0,y1-th-8)
+            cv2.rectangle(img,(x1,yb),(x1+tw+6,y1),(0,255,0),-1)
             cv2.putText(img,label,(x1+3,y1-6),font,0.6,(0,0,0),2,cv2.LINE_AA)
 
-        # track IDs (optional)
         if self.last_ids and centers:
             det_np = np.array(centers, np.float32)
             for tx,ty,tid in self.last_ids:
@@ -109,13 +129,11 @@ class OverlayNode(Node):
                 cv2.circle(img,(cx,cy),5,(255,200,0),-1)
                 cv2.putText(img,f"ID {tid}",(cx+6,cy-6),font,0.6,(255,200,0),2,cv2.LINE_AA)
 
-        # HUD lines (system + telemetry)
         y = 24
         for line in (self.lines_system + self.lines_telem)[:8]:
             cv2.putText(img, line, (10, y), font, 0.6, (255,255,255), 2, cv2.LINE_AA)
             y += 22
 
-        # publish
         m = self.bridge.cv2_to_imgmsg(img, "bgr8"); m.header = msg.header
         self.pub_img.publish(m)
         ok, buf = cv2.imencode(".jpg", img, [int(cv2.IMWRITE_JPEG_QUALITY),80])
@@ -135,4 +153,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

@@ -3,20 +3,9 @@ import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Image, CompressedImage
 from cv_bridge import CvBridge
-
-
-# Video params
-RTSP_URL     = "rtsp://admin:1234@10.191.67.102:8554/live"
-VIDEO_WIDTH  = 640
-VIDEO_HEIGHT = 480
-VIDEO_FPS    = 24
-VIDEO_LATENCY = 0
-VIDEO_USE_HW = True
-VIDEO_ROTATE = 270
-JPEG_QUALITY = 80
+from ai_drone.config import RTSP_URL, VIDEO_WIDTH, VIDEO_HEIGHT, VIDEO_FPS, VIDEO_LATENCY, VIDEO_USE_HW, VIDEO_ROTATE, JPEG_QUALITY
 
 def gst_pipeline(rtsp: str, use_hw: bool, width: int, height: int, latency: int) -> str:
-    """GStreamer pipeline for Jetson: NVDEC → BGRx → videoconvert → BGR → appsink."""
     scale_caps = "" if width <= 0 or height <= 0 else f",width={width},height={height}"
     if use_hw:
         return (
@@ -36,8 +25,6 @@ def gst_pipeline(rtsp: str, use_hw: bool, width: int, height: int, latency: int)
 
 
 class RtspNode(Node):
-    """ROS2 node: acquire RTSP frames and publish raw + compressed images."""
-
     def __init__(self):
         super().__init__('video')
 
@@ -63,7 +50,6 @@ class RtspNode(Node):
         )
 
     def _open(self):
-        """Open RTSP pipeline via GStreamer."""
         pipe = gst_pipeline(self.rtsp, self.use_hw, self.w, self.h, self.lat)
         self.cap = cv2.VideoCapture(pipe, cv2.CAP_GSTREAMER)
         if self.cap.isOpened():
@@ -73,7 +59,6 @@ class RtspNode(Node):
             self.get_logger().error("Failed to open RTSP pipeline")
 
     def loop(self):
-        """Grab a frame, rotate if needed, publish raw + compressed."""
         if self.cap is None or not self.cap.isOpened():
             self._open()
             time.sleep(0.1)
@@ -81,7 +66,7 @@ class RtspNode(Node):
 
         ok, frame = self.cap.read()
         if not ok:
-            self.get_logger().warn("⚠️ Lost stream, reconnecting…")
+            self.get_logger().warn("\033[33mERROR:\033[0m Lost stream, reconnecting…")
             try:
                 self.cap.release()
             except Exception:

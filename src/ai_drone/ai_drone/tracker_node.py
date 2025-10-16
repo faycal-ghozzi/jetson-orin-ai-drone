@@ -4,17 +4,13 @@ import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String, Int32MultiArray
 
-# Tracker configuration
-MAX_AGE = 10           # number of frames before a track is removed
-DIST_TH = 100.0        # maximum distance to associate (pixels)
-DIST_TH2 = DIST_TH ** 2
+from ai_drone.config import MAX_AGE, DIST_TH, DIST_TH2
 
 class Tracker(Node):
     """
-    Tracker node:
-    - subscribes to /detections_raw (YOLO detections JSON)
-    - assigns persistent IDs to detections
-    - publishes [x, y, id, ...] on /tracks_xy_id
+        - subscribes to /detections_raw
+        - assigns IDs to detections
+        - publishes on /tracks_xy_id
     """
 
     def __init__(self):
@@ -22,13 +18,12 @@ class Tracker(Node):
         self.tracks = {}
         self.next_id = 1
 
-        self.create_subscription(String, '/detections_raw', self._on_det, 10)
+        self.create_subscription(String, '/detections_raw', self._on_detection, 10)
         self.pub = self.create_publisher(Int32MultiArray, '/tracks_xy_id', 10)
 
-        self.get_logger().info("Tracker ready ✅ (listening to /detections_raw)")
+        self.get_logger().info("Tracker ready (listening to /detections_raw)")
 
-    def _on_det(self, msg: String):
-        """Receive JSON detections, update tracks, publish [x, y, id,...]."""
+    def _on_detection(self, msg: String):
         try:
             dets = json.loads(msg.data).get("detections", [])
         except Exception as e:

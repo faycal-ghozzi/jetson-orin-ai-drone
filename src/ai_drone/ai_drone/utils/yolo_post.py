@@ -1,7 +1,6 @@
 import numpy as np
 
 def prep_bgr_to_nchw(img_bgr, W, H):
-    """Prépare une image BGR en NCHW float32 [1,3,H,W] normalisée."""
     import cv2
     r = cv2.resize(img_bgr, (W,H))
     r = cv2.cvtColor(r, cv2.COLOR_BGR2RGB).astype(np.float32)/255.0
@@ -9,7 +8,6 @@ def prep_bgr_to_nchw(img_bgr, W, H):
     return r
 
 def decode_yolov8(outputs, img_w, img_h, conf_th=0.25, keep=(0,7)):
-    """Décodage YOLOv8 [N,85] → boîtes [x1,y1,x2,y2,score,cls] avec NMS 0.5."""
     pred = outputs[0].reshape(-1, 85)
     pred = pred[pred[:,4] > conf_th]
     if len(pred)==0: 
@@ -26,7 +24,6 @@ def decode_yolov8(outputs, img_w, img_h, conf_th=0.25, keep=(0,7)):
     return nms(boxes, 0.5)
 
 def nms(boxes, iou_th=0.5):
-    """NMS standard sur [x1,y1,x2,y2,score,cls]."""
     if len(boxes)==0: return boxes
     b = boxes[np.argsort(-boxes[:,4])]
     keep=[]

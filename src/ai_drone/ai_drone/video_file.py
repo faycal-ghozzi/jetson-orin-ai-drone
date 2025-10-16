@@ -5,17 +5,7 @@ from rclpy.clock import Clock
 from sensor_msgs.msg import Image, CompressedImage
 from cv_bridge import CvBridge
 
-# ---------- Hardcoded defaults (override via ROS params if you want) ----------
-VIDEO_FILE         = "~/ai-drone-ws/media/demo.mp4"
-LOOP_VIDEO         = True
-RESIZE_W, RESIZE_H = 640, 480        # 0 to keep source size
-ROTATE_DEG         = 0               # one of {0, 90, 180, 270}
-MIRROR             = False           # horizontal flip
-SPEED_FACTOR       = 1.0             # 1.0 = real-time, 0 = as fast as possible
-JPEG_QUALITY       = 80
-PUB_RAW_TOPIC      = "/camera/image"
-PUB_COMP_TOPIC     = "/camera/image/compressed"
-# -----------------------------------------------------------------------------
+from ai_drone.config import VIDEO_FILE, LOOP_VIDEO, RESIZE_W, RESIZE_H, ROTATE_DEG, MIRROR, SPEED_FACTOR, JPEG_QUALITY, PUB_RAW_TOPIC, PUB_COMP_TOPIC
 
 
 def _rotate(frame, deg):
@@ -27,12 +17,13 @@ def _rotate(frame, deg):
 
 
 class VideoFileNode(Node):
-    """Play a local video file and publish /camera/image (+ compressed) for the pipeline."""
+    """
+        - Play demo video (ros2 launch bringup_file.launch.py)
+    """
 
     def __init__(self):
         super().__init__("video_file")
 
-        # Params (optional overrides)
         self.declare_parameter("file", VIDEO_FILE)
         self.declare_parameter("loop", LOOP_VIDEO)
         self.declare_parameter("resize_w", RESIZE_W)
@@ -59,13 +50,11 @@ class VideoFileNode(Node):
         self.pub_raw  = self.create_publisher(Image, pub_raw, 10)
         self.pub_comp = self.create_publisher(CompressedImage, pub_comp, 10)
 
-        # Open video
         self.cap = cv2.VideoCapture(self.path, cv2.CAP_FFMPEG)
         if not self.cap.isOpened():
             self.get_logger().error(f"Cannot open video file: {self.path}")
             raise SystemExit(1)
 
-        # fps pacing
         src_fps = self.cap.get(cv2.CAP_PROP_FPS)
         self.src_fps = src_fps if src_fps and src_fps > 0 else 25.0
         self.dt = 0.0 if self.speed_factor <= 0 else (1.0 / self.src_fps) / self.speed_factor
@@ -76,7 +65,6 @@ class VideoFileNode(Node):
             f"mirror={self.mirror}, speed={self.speed_factor}x)"
         )
 
-        # Timer drives the read/publish loop
         period = 0.0 if self.dt == 0.0 else self.dt
         self.timer = self.create_timer(max(0.0, period), self._tick)
 
@@ -87,20 +75,15 @@ class VideoFileNode(Node):
         if ok:
             return frame
 
-        # EOF handling
         if self.loop:
-            # rewind and try one more read
             self.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
             ok2, frame2 = self.cap.read()
             if ok2:
                 return frame2
-        # No frame available
         return None
 
     def _tick(self):
-        # Pacing for speed_factor if timer period is 0.0
         if self.dt == 0.0:
-            # As fast as possible, but avoid busy spin
             now = time.monotonic()
             if now - self.last_pub_time < 0.0005:
                 return
@@ -108,11 +91,9 @@ class VideoFileNode(Node):
 
         frame = self._read_frame()
         if frame is None:
-            # No frame right now; sleep a bit to avoid busy loop
             time.sleep(0.01)
             return
 
-        # Transform
         if self.rotate_deg:
             frame = _rotate(frame, self.rotate_deg)
         if self.mirror:
@@ -120,7 +101,6 @@ class VideoFileNode(Node):
         if self.resize_w > 0 and self.resize_h > 0:
             frame = cv2.resize(frame, (self.resize_w, self.resize_h), interpolation=cv2.INTER_LINEAR)
 
-        # Publish
         stamp = Clock().now().to_msg()
         msg = self.bridge.cv2_to_imgmsg(frame, encoding="bgr8")
         msg.header.stamp = stamp

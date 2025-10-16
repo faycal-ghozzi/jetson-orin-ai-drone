@@ -5,29 +5,23 @@ import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String
 from geometry_msgs.msg import PoseStamped
-
-IMG_W = 640
-IMG_H = 480
-HFOV_DEG = 70.0
-VFOV_DEG = 55.0
-
-MIN_TAN = 1e-3
-MAX_RANGE_M = 300.0
-STATUS_HZ = 5.0
+from ai_drone.config import IMG_W, IMG_H, HFOV_DEG, VFOV_DEG, MIN_TAN, MAX_RANGE_M, STATUS_HZ
 
 def euler_from_quat(x: float, y: float, z: float, w: float) -> Tuple[float,float,float]:
-    """Return roll, pitch, yaw (rad) from quaternion (ENU)."""
-    # roll (x-axis)
+    """Return roll, pitch, yaw from quaternion."""
+    # roll
     sinr_cosp = 2.0 * (w*x + y*z)
     cosr_cosp = 1.0 - 2.0 * (x*x + y*y)
     roll = math.atan2(sinr_cosp, cosr_cosp)
-    # pitch (y-axis)
+    
+    # pitch
     sinp = 2.0 * (w*y - z*x)
     if abs(sinp) >= 1:
         pitch = math.copysign(math.pi/2, sinp)
     else:
         pitch = math.asin(sinp)
-    # yaw (z-axis)
+    
+    # yaw
     siny_cosp = 2.0 * (w*z + x*y)
     cosy_cosp = 1.0 - 2.0 * (y*y + z*z)
     yaw = math.atan2(siny_cosp, cosy_cosp)
@@ -39,13 +33,6 @@ def fx_fy_from_fov(img_w: int, img_h: int, hfov_deg: float, vfov_deg: float):
     return fx, fy
 
 class PerceptionProcessor(Node):
-    """
-    /detections_raw (String JSON) + /telemetry/pose (PoseStamped) → ground ENU points
-    Publishes:
-      - /detections/ground_enu (String JSON)
-      - /reproj/range_hints (String JSON)  # for overlay to show "<range> m"
-      - /overlay/lines (String JSON)       # status line on the video
-    """
     def __init__(self):
         super().__init__("process_perception")
 
@@ -60,14 +47,13 @@ class PerceptionProcessor(Node):
         self.cx, self.cy = IMG_W * 0.5, IMG_H * 0.5
 
         self.pose_xy = (0.0, 0.0)
-        self.alt_m   = 1.2          # fallback camera height if telemetry missing
+        self.alt_m   = 1.2          # fallback default height if telemetry server not running
         self.yaw_rad = 0.0
-        self.pitch_rad = math.radians(10.0)  # fallback: pitched slightly down
+        self.pitch_rad = math.radians(10.0)
 
         self._last_status = 0.0
-        self.get_logger().info("PerceptionProcessor ready ✅ (ground reprojection)")
+        self.get_logger().info("PerceptionProcessor ready")
 
-    # callbacks 
     def on_pose(self, msg: PoseStamped):
         self.pose_xy = (float(msg.pose.position.x), float(msg.pose.position.y))
         self.alt_m   = float(msg.pose.position.z)

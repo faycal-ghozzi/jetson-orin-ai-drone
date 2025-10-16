@@ -1,34 +1,11 @@
-"""
-Flask backend (API + MJPEG) for AI-Drone, no UI.
-
-Endpoints
-- GET  /api/state       : consolidated JSON (video, YOLO, telemetry, class map, settings)
-- GET  /api/settings    : current settings
-- POST /api/settings    : update settings (e.g., {"onlyWhenYolo":true,"jpegQuality":80})
-- GET  /video           : MJPEG stream (served when frames exist)
-- GET  /snapshot.jpg    : last JPEG frame
-- GET  /healthz         : minimal health for probes
-- GET  /telemetry/live.json : legacy telemetry snapshot (compat)
-"""
-
 import os, json, time, math, threading
 from typing import Dict, Any
-
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import CompressedImage
 from std_msgs.msg import String
 from flask import Flask, Response, jsonify, request
-
-# config defaults
-DEFAULT_STREAM_TOPIC = "/camera/overlay/compressed"
-DEFAULT_PORT         = 5000
-READY_TIMEOUT_S      = 3.0
-
-CLASS_MAP: Dict[str, str] = {
-    "0": "person",
-    "7": "truck",
-}
+from ai_drone.config import DEFAULT_STREAM_TOPIC, DEFAULT_PORT, READY_TIMEOUT_S, CLASS_MAP
 
 app = Flask(__name__)
 
@@ -119,7 +96,7 @@ class FlaskStream(Node):
         port      = int(os.getenv('FLASK_PORT', DEFAULT_PORT))
 
         self.sub_img = self.create_subscription(CompressedImage, topic_img, self._on_img, 10)
-        self.sub_det = self.create_subscription(String, '/detections_raw', self._on_det, 10)
+        self.sub_det = self.create_subscription(String, '/detections_raw', self._on_detection, 10)
         self.sub_tel = self.create_subscription(String, '/telemetry/raw', self._on_tel, 10)
 
         self._yaw_last = None
@@ -142,19 +119,17 @@ class FlaskStream(Node):
             v["fps"] = 0.9 * v["fps"] + 0.1 * inst
         v["last_t"] = t
 
-    def _on_det(self, msg: String):
+    def _on_detection(self, msg: String):
         y = state["yolo"]
         t = _now()
         y["last_t"] = t
         y["ready"] = True
         try:
             j = json.loads(msg.data)
-            # If payload contains meta info from yolo_trt_node
             meta = j.get("meta") or {}
             if "backend" in meta: y["backend"] = meta.get("backend")
             if "ms" in meta:      y["ms"]      = float(meta.get("ms", 0))
             if "fps" in meta:     y["fps"]     = float(meta.get("fps", y["fps"]))
-            # Class counts either in meta or compute from detections
             if "class_counts" in meta:
                 y["class_counts"] = {str(k): int(v) for k, v in meta["class_counts"].items()}
             else:
@@ -180,16 +155,14 @@ class FlaskStream(Node):
 
             yaw = _to_float(j.get("yaw_deg"))
             if yaw is not None:
-                # normalize -180..180
                 yaw_norm = ((yaw + 180.0) % 360.0) - 180.0
                 tstate["yaw_deg"]      = yaw
                 tstate["yaw_deg_norm"] = yaw_norm
-                # unwrap for continuity
                 if self._yaw_last is None:
                     self._yaw_cont = yaw
                 else:
                     d = yaw - self._yaw_last
-                    d = (d + 180.0) % 360.0 - 180.0  # shortest arc
+                    d = (d + 180.0) % 360.0 - 180.0
                     # self._yaw_cont += d
                 self._yaw_last = yaw
                 tstate["yaw_deg_cont"] = self._yaw_cont

@@ -3,7 +3,6 @@ import pycuda.driver as cuda
 import numpy as np
 
 class TrtRunner:
-    """Charge un moteur TensorRT et exécute une inférence sur entrée NCHW float32 [1,3,H,W]."""
     def __init__(self, engine_path: str):
         self.logger = trt.Logger(trt.Logger.ERROR)
         with open(engine_path,'rb') as f, trt.Runtime(self.logger) as rt:
@@ -24,7 +23,6 @@ class TrtRunner:
             self.bindings[i]=int(d)
 
     def infer(self, x: np.ndarray) -> list:
-        """Retourne une liste de sorties numpy à partir du tenseur d’entrée x."""
         np.copyto(self.host[0], x.ravel())
         cuda.memcpy_htod_async(self.dev[0], self.host[0], self.stream)
         self.ctx.execute_async_v2(self.bindings, self.stream.handle)
